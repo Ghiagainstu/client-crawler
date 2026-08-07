@@ -2,3 +2,4 @@ requests>=2.31
 beautifulsoup4>=4.12
 lxml>=5.0
 pyyaml>=6.0
+flask>=3.0   # 仅 onboard/ 录入页需要；服务器若也要跑录入页，需 pip install -r requirements.txt
