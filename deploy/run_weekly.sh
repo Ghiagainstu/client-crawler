@@ -31,4 +31,4 @@ else
     echo "==> git push failed - check server git credential for github.com"
   fi
 fi
-echo "==> Done. Dashboard served at http://<this-host-ip>:8080 (dashboard.service). WorkBuddy syncs Notion."
+echo "==> Done. Dashboard served at http://<this-host-ip>:8082 (dashboard.service). WorkBuddy syncs Notion."

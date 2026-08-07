@@ -1,5 +1,5 @@
 [Unit]
-Description=Client News Dashboard + Crawler Onboarding (LAN, :8080)
+Description=Client News Dashboard + Crawler Onboarding (LAN, :8082)
 After=network-online.target
 Wants=network-online.target
 
@@ -7,8 +7,9 @@ Wants=network-online.target
 Type=simple
 User=__USER__
 WorkingDirectory=__APP_DIR__
-# Serve the news dashboard AND the "添加爬虫" onboarding form on :8080 (Flask app).
-ExecStart=__APP_DIR__/venv/bin/python dashboard/server.py
+# Serve the news dashboard AND the "添加爬虫" onboarding form on :8082 (Flask app).
+# Port 8080 is taken by nginx (pre-existing "AI-Report" dashboard), so Flask uses 8082.
+ExecStart=__APP_DIR__/venv/bin/python dashboard/server.py --port 8082
 Restart=on-failure
 
 [Install]

@@ -19,8 +19,10 @@ git clone https://github.com/Ghiagainstu/client-crawler.git /opt/client-crawler
    cp deploy/client-crawler.service deploy/client-crawler.timer deploy/dashboard.service /etc/systemd/system/
    systemctl daemon-reload && systemctl enable --now client-crawler.timer dashboard.service
    - client-crawler.timer：每周一 09:00 跑 deploy/run_weekly.sh（爬新闻 + 生成看板 + 推 GitHub）
-   - dashboard.service：在 0.0.0.0:8080 跑 dashboard/server.py（Flask）。团队访问
-     http://192.168.0.147:8080 看新闻汇总；页头「＋ 添加爬虫」→ /add 填表加新客户。
+   - dashboard.service：在 0.0.0.0:8082 跑 dashboard/server.py（Flask）。团队访问
+     http://192.168.0.147:8082 看新闻汇总；页头「＋ 添加爬虫」→ /add 填表加新客户。
+     注意：端口 8080 已被 nginx 占用（之前部署的 "AI-Report" 客户每周新闻情报看板，
+     静态服务），故 Flask 改用 8082，不要改回 8080（会 Address already in use 启动失败）。
      提交后服务器把录入推回 GitHub，由 WorkBuddy 侧的「火哥的绿龙虾」接手写解析器并爬取。
    - 依赖：requirements.txt 已含 flask>=3.0，install.sh 第 30 行已 pip 安装；无需额外操作。
    （频率 / 客户在 deploy/client-crawler.timer 的 OnCalendar 字段修改）

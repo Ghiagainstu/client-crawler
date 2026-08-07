@@ -47,7 +47,7 @@ if [ "$(id -u)" -eq 0 ]; then
   systemctl daemon-reload
   systemctl enable --now client-crawler.timer
   systemctl enable --now dashboard.service
-  echo "==> Timer enabled: weekly Monday 09:00. Dashboard+添加爬虫: http://<host-ip>:8080 (form at /add)"
+  echo "==> Timer enabled: weekly Monday 09:00. Dashboard+添加爬虫: http://<host-ip>:8082 (form at /add)"
   echo "    Status: systemctl status client-crawler.timer ; systemctl status dashboard.service"
 else
   echo "==> Not root: skip systemd. To enable manually:"

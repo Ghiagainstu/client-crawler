@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Combined LAN dashboard + crawler onboarding server (Ubuntu :8080).
+"""Combined LAN dashboard + crawler onboarding server (Ubuntu :8082).
+
+NOTE: port 8080 is taken by nginx (the pre-existing "AI-Report" customer
+weekly-news dashboard). Flask serves on 8082 to avoid the conflict.
 
 Serves the team on the LAN from a single port:
   GET  /        -> news summary dashboard (dashboard/index.html, built by build.py)
@@ -13,7 +16,7 @@ form POST. Deployed by deploy/dashboard.service (venv python). Requires flask
 (in requirements.txt).
 
 Run (standalone / dev):
-  venv/bin/python dashboard/server.py            # :8080
+  venv/bin/python dashboard/server.py            # :8082
   PORT=9000 venv/bin/python dashboard/server.py  # custom port
 """
 from __future__ import annotations
@@ -98,8 +101,8 @@ def _push_submission(client: str) -> bool:
 if __name__ == "__main__":
     import argparse
     ap = argparse.ArgumentParser()
-    ap.add_argument("--port", type=int, default=int(os.environ.get("PORT", "8080")),
-                    help="listen port (default 8080)")
+    ap.add_argument("--port", type=int, default=int(os.environ.get("PORT", "8082")),
+                    help="listen port (default 8082; 8080 is taken by nginx AI-Report)")
     ap.add_argument("--host", default="0.0.0.0")
     args = ap.parse_args()
     app.run(host=args.host, port=args.port, debug=False)
