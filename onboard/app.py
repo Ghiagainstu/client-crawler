@@ -6,7 +6,11 @@ them, and hands the structured request to the agent (火哥的绿龙虾) which t
 writes the parser, registers it, runs the crawler and syncs Notion/dashboard.
 
 Run:
-  venv/bin/python onboard/app.py            # http://localhost:8765
+  venv/bin/python onboard/app.py                 # http://localhost:8777
+  PORT=9000 venv/bin/python onboard/app.py       # custom port (env)
+  venv/bin/python onboard/app.py --port 9000     # custom port (arg)
+
+Note: 8765 is 火哥's personal site — do NOT use it here. Default is 8777.
 """
 from __future__ import annotations
 
@@ -199,4 +203,10 @@ def submit():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8765, debug=False)
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--port", type=int, default=int(os.environ.get("PORT", "8777")),
+                    help="listen port (default 8777; 8765 is 火哥's personal site)")
+    ap.add_argument("--host", default="0.0.0.0", help="bind host (default 0.0.0.0)")
+    args = ap.parse_args()
+    app.run(host=args.host, port=args.port, debug=False)

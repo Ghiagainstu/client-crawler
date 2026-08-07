@@ -58,7 +58,7 @@ clients:
 ```
 人（填表）                Agent（火哥的绿龙虾）
 ─────────                ────────────────────
-打开录入页 :8765         运行 onboard/process_queue.py
+打开录入页 :8777         运行 onboard/process_queue.py
   填写 site 字段   ──▶     · 生成 crawler/parsers/<client>.py（含 TODO 选择器）
   点提交                  · 写入 config/sites.yaml
                           · 注册 crawler/parsers/__init__.py
@@ -70,7 +70,8 @@ clients:
 
 1. 启动录入页（本地 / 服务器均可）：
    ```bash
-   python onboard/app.py          # http://localhost:8765
+   python onboard/app.py          # http://localhost:8777
+   # 8765 是火哥的个人站，录入页默认避开它；如需改端口：PORT=9000 python onboard/app.py
    ```
 2. 必填：客户标识（英文小写）、显示名、网站根地址、新闻列表页 URL；
    选填：来源媒体名/链接、是否抓全文、频率、备注（备注里写清“列表是 JS 动态 / 需翻页 / 子域名”等，能帮我更快写对解析器）。
