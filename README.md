@@ -15,6 +15,10 @@ client-crawler/
 │   └── notion_sync.py       # Notion 同步（读环境变量密钥）
 ├── cli.py                   # 入口：python cli.py --client sasol
 ├── data/<client>/<date>.json  # 输出
+├── onboard/
+│   ├── app.py               # 网页录入表单（Flask，本地 :8765）
+│   ├── process_queue.py     # Agent 接手：把待处理提交脚手架化为解析器+配置
+│   └── inspect_site.py      # Agent 辅助：分析列表页、给出候选选择器
 └── requirements.txt
 ```
 
@@ -47,7 +51,40 @@ clients:
     limit: 0               # 0 = 不限
 ```
 
-## 新增客户
+## 新增客户：网页自助录入 + Agent 接手（推荐）
+
+模式：人在网页填字段 → 提交进入队列 → 「火哥的绿龙虾」接手写解析器、跑爬虫、同步看板与 Notion。
+
+```
+人（填表）                Agent（火哥的绿龙虾）
+─────────                ────────────────────
+打开录入页 :8765         运行 onboard/process_queue.py
+  填写 site 字段   ──▶     · 生成 crawler/parsers/<client>.py（含 TODO 选择器）
+  点提交                  · 写入 config/sites.yaml
+                          · 注册 crawler/parsers/__init__.py
+                          · 队列项标记 registered
+                        运行 onboard/inspect_site.py <client> 定选择器
+                        python cli.py --client <client> --limit 3 --no-articles  # 冒烟
+                        python cli.py --client <client>  # 正式抓 + 同步
+```
+
+1. 启动录入页（本地 / 服务器均可）：
+   ```bash
+   python onboard/app.py          # http://localhost:8765
+   ```
+2. 必填：客户标识（英文小写）、显示名、网站根地址、新闻列表页 URL；
+   选填：来源媒体名/链接、是否抓全文、频率、备注（备注里写清“列表是 JS 动态 / 需翻页 / 子域名”等，能帮我更快写对解析器）。
+3. Agent 接手（我来处理）：
+   ```bash
+   python onboard/process_queue.py   # 把 pending 提交脚手架化
+   python onboard/inspect_site.py <client>   # 输出候选 ITEM_SELECTOR
+   ```
+4. 我补全解析器里的 TODO 选择器后，跑爬虫并同步。
+
+> 备注：`onboard/queue.jsonl` 与 `onboard/requests/` 为运行时数据，已在 `.gitignore` 忽略；
+> 录入页与 `process_queue.py` / `inspect_site.py` 脚本均入库。
+
+## 新增客户（纯手动，备选）
 1. 在 `crawler/parsers/` 新建 `<client>.py`，实现 `parse_list(html)->list[{title,url,date_raw,summary}]` 与 `parse_article(html)->{content, article_title}`。
 2. 在 `crawler/parsers/__init__.py` 的 `REGISTRY` / `BASE_URL` 注册。
 3. 在 `config/sites.yaml` 增加该客户条目。
