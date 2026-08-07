@@ -87,12 +87,14 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           font-size:13px;font-weight:600;padding:5px 13px;border-radius:8px;text-decoration:none;
           vertical-align:middle}
   .addbtn:hover{filter:brightness(.95)}
+  .addbtn.alt{background:var(--badge)}
 </style>
 </head>
 <body>
 <header><div class="wrap">
   <h1>客户每周新闻汇总</h1>
   <a class="addbtn" href="/add">＋ 添加爬虫</a>
+  <a class="addbtn alt" href="http://192.168.0.147:8080/" target="_blank" rel="noopener">AI-Report 看板 ↗</a>
   <div class="sub" id="sub">加载中…</div>
   <div class="controls">
     <div class="chips" id="chips"></div>

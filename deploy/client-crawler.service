@@ -7,6 +7,9 @@ Wants=network-online.target
 Type=oneshot
 User=__USER__
 WorkingDirectory=__APP_DIR__
+# Optional env file (gitignored). Provides S_DRIVE_ROOT for kb_export.
+# The leading '-' makes it optional: missing .env won't break the timer.
+EnvironmentFile=-__APP_DIR__/.env
 # Notion sync is done by WorkBuddy (Notion MCP) - this server needs no token.
 # Add more --client lines or loop over clients as needed.
 ExecStart=__APP_DIR__/deploy/run_weekly.sh __APP_DIR__

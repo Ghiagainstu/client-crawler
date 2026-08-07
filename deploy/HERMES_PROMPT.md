@@ -13,8 +13,15 @@ git clone https://github.com/Ghiagainstu/client-crawler.git /opt/client-crawler
 步骤：
 1. cd /opt/client-crawler
 2. python3 -m venv venv && venv/bin/pip install -r requirements.txt
+2b. 配置 S: 归档路径（原始数据 + Client Knowledge Base 落盘）：
+    cp deploy/.env.example .env
+    打开 .env，确认 S_DRIVE_ROOT 指向本机 S: 共享的本地目录
+    （默认 /media/theeggsh/SSD-2/AI-Report，即 Windows 映射的 S: 盘）。
+    爬虫每周一把原始数据写 S:/<client>/<category>/<date>.json，
+    KB 骨架写 S:/Obsidian/<client>/KB/。目录需爬虫服务账户可写（默认 777 已满足）。
 3. 冒烟测试：venv/bin/python cli.py --client sasol --limit 2
-   确认生成 data/sasol/*.json 且含 title / published_at / content
+   确认生成 data/sasol/*.json 且含 title / published_at / content；
+   同时应在 S_DRIVE_ROOT 下看到 sasol/ 与 Obsidian/sasol/KB/ 目录结构生成。
 4. 定时任务 + 看板（默认 systemd）：
    cp deploy/client-crawler.service deploy/client-crawler.timer deploy/dashboard.service /etc/systemd/system/
    systemctl daemon-reload && systemctl enable --now client-crawler.timer dashboard.service
@@ -43,6 +50,10 @@ git clone https://github.com/Ghiagainstu/client-crawler.git /opt/client-crawler
 - **WorkBuddy（Notion MCP）**：每周一 10:00 拉取 GitHub 上的 `data/`，调用 Notion MCP 把新条目写入
   数据库 **客户每周新闻汇总**（ID `8c48dd185e224af4ac7237e98ae1a86e`），按 `source_url` 去重。
 - 服务器不需要任何 Notion 密钥。
+- **S: 盘归档 + KB 骨架**：每次爬取后 `kb_export` 把原始数据写 `S_DRIVE_ROOT/<client>/<category>/<date>.json`，
+  并在 `S_DRIVE_ROOT/Obsidian/<client>/KB/` 生成 00-Index / 01-Facts / 02-Selling / 03-Compliance 骨架文件
+  （idempotent，不覆盖已有内容）。AI 抽取事实/卖点填入 01/02 由 WorkBuddy 侧完成（option-3 分工），服务器不调 LLM。
+- S_DRIVE_ROOT 通过 `.env`（gitignored）注入，client-crawler.service 用 `EnvironmentFile=-.../.env` 读取。
 
 ## 你（火哥）要确认
 - hermes 跑完部署后，第一次 `run_weekly.sh` 能成功 `git push`（否则 WorkBuddy 收不到数据）。

@@ -29,6 +29,12 @@ python3 -m venv venv
 ./venv/bin/pip install -U pip -q
 ./venv/bin/pip install -r requirements.txt -q
 
+# Ensure local .env exists (gitignored). Provides S_DRIVE_ROOT for kb_export.
+if [ ! -f "$APP_DIR/.env" ]; then
+  cp "$HERE/deploy/.env.example" "$APP_DIR/.env"
+  echo "==> Created $APP_DIR/.env (edit S_DRIVE_ROOT if the S: backing path differs)"
+fi
+
 echo "==> Notion sync is handled by WorkBuddy (Notion MCP) — no token needed on this server."
 
 # Smoke test

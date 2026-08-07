@@ -26,6 +26,7 @@ from crawler.core import fetch
 from crawler.parsers import get_parser, BASE_URL
 from crawler import pipeline
 from crawler import notion_sync
+from crawler import kb_export
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("cli")
@@ -88,6 +89,18 @@ def main():
     with open(out, "w", encoding="utf-8") as f:
         json.dump(items, f, ensure_ascii=False, indent=2)
     log.info("wrote %d items -> %s", len(items), out)
+
+    # Export to S: drive (raw archive + KB scaffold). Server-side, no AI needed.
+    # Skips gracefully if S_DRIVE_ROOT is unset or the share is unreachable.
+    try:
+        kb_export.export_client(
+            args.client, items,
+            media_source=media_source,
+            category=c.get("category", "news"),
+            date_str=date.today().isoformat(),
+        )
+    except Exception as e:  # noqa: BLE001
+        log.warning("kb_export failed (non-fatal): %s", e)
 
     if args.notion:
         notion_sync.sync_items(items)
