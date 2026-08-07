@@ -83,11 +83,16 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   .links a{color:var(--accent);text-decoration:none}
   .links a:hover{text-decoration:underline}
   .empty{color:var(--muted);padding:40px;text-align:center}
+  .addbtn{display:inline-block;margin-left:14px;background:var(--accent);color:#fff;
+          font-size:13px;font-weight:600;padding:5px 13px;border-radius:8px;text-decoration:none;
+          vertical-align:middle}
+  .addbtn:hover{filter:brightness(.95)}
 </style>
 </head>
 <body>
 <header><div class="wrap">
   <h1>客户每周新闻汇总</h1>
+  <a class="addbtn" href="/add">＋ 添加爬虫</a>
   <div class="sub" id="sub">加载中…</div>
   <div class="controls">
     <div class="chips" id="chips"></div>

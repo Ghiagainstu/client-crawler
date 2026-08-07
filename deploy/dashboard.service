@@ -1,14 +1,14 @@
 [Unit]
-Description=Client News Dashboard (LAN static file server)
+Description=Client News Dashboard + Crawler Onboarding (LAN, :8080)
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
 User=__USER__
-WorkingDirectory=__APP_DIR__/dashboard
-# Serve the generated dashboard over the LAN on port 8080.
-ExecStart=__APP_DIR__/venv/bin/python -m http.server 8080 --bind 0.0.0.0
+WorkingDirectory=__APP_DIR__
+# Serve the news dashboard AND the "添加爬虫" onboarding form on :8080 (Flask app).
+ExecStart=__APP_DIR__/venv/bin/python dashboard/server.py
 Restart=on-failure
 
 [Install]

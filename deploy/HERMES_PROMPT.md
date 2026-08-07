@@ -19,7 +19,10 @@ git clone https://github.com/Ghiagainstu/client-crawler.git /opt/client-crawler
    cp deploy/client-crawler.service deploy/client-crawler.timer deploy/dashboard.service /etc/systemd/system/
    systemctl daemon-reload && systemctl enable --now client-crawler.timer dashboard.service
    - client-crawler.timer：每周一 09:00 跑 deploy/run_weekly.sh（爬新闻 + 生成看板 + 推 GitHub）
-   - dashboard.service：在 0.0.0.0:8080 提供看板，团队访问 http://192.168.0.147:8080
+   - dashboard.service：在 0.0.0.0:8080 跑 dashboard/server.py（Flask）。团队访问
+     http://192.168.0.147:8080 看新闻汇总；页头「＋ 添加爬虫」→ /add 填表加新客户。
+     提交后服务器把录入推回 GitHub，由 WorkBuddy 侧的「火哥的绿龙虾」接手写解析器并爬取。
+   - 依赖：requirements.txt 已含 flask>=3.0，install.sh 第 30 行已 pip 安装；无需额外操作。
    （频率 / 客户在 deploy/client-crawler.timer 的 OnCalendar 字段修改）
 5. 确保本机对 github.com 有 push 凭证（deploy key 或用户凭证），
    因为 run_weekly.sh 抓完会把 data/ 推回 GitHub，供 WorkBuddy 同步 Notion。
@@ -41,4 +44,5 @@ git clone https://github.com/Ghiagainstu/client-crawler.git /opt/client-crawler
 
 ## 你（火哥）要确认
 - hermes 跑完部署后，第一次 `run_weekly.sh` 能成功 `git push`（否则 WorkBuddy 收不到数据）。
-- 看板（团队 LAN 访问）是独立一块，尚未搭建。
+- 看板（团队 LAN 访问）已含「添加爬虫」菜单（dashboard/server.py，Flask）；若 hermes 是早期按旧 prompt 部署、
+  看板还是 `python -m http.server`，需重跑一次 install.sh 让 dashboard.service 改用 server.py 并装上 flask。

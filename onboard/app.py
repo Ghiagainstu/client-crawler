@@ -150,13 +150,17 @@ def _slug(s: str) -> str:
 
 
 @app.route("/")
+@app.route("/add")
 def index():
     return render_template_string(FORM_HTML)
 
 
-@app.route("/submit", methods=["POST"])
-def submit():
-    f = request.form
+def save_submission(f) -> tuple[list, dict | None]:
+    """Validate + persist an onboarding submission. Returns (errors, req).
+
+    Reused by the standalone form and by dashboard/server.py so both share
+    the same validation + queue logic.
+    """
     client = _slug(f.get("client", ""))
     name = (f.get("name") or "").strip()
     base_url = (f.get("base_url") or "").strip()
@@ -171,11 +175,8 @@ def submit():
         errors.append("网站根地址需以 http(s):// 开头")
     if not list_url.startswith("http"):
         errors.append("列表页 URL 需以 http(s):// 开头")
-
     if errors:
-        return ("<h3>提交有误：</h3><ul>" +
-                "".join(f"<li>{e}</li>" for e in errors) +
-                '</ul><p><a href="/">返回修改</a></p>'), 400
+        return errors, None
 
     media_source = (f.get("media_source") or name).strip()
     media_source_url = (f.get("media_source_url") or list_url).strip()
@@ -194,10 +195,21 @@ def submit():
     }
 
     # Persist
+    os.makedirs(REQUESTS_DIR, exist_ok=True)
     with open(os.path.join(REQUESTS_DIR, f"{client}.json"), "w", encoding="utf-8") as fp:
         json.dump(req, fp, ensure_ascii=False, indent=2)
     with open(QUEUE, "a", encoding="utf-8") as fp:
         fp.write(json.dumps(req, ensure_ascii=False) + "\n")
+    return [], req
+
+
+@app.route("/submit", methods=["POST"])
+def submit():
+    errors, req = save_submission(request.form)
+    if errors:
+        return ("<h3>提交有误：</h3><ul>" +
+                "".join(f"<li>{e}</li>" for e in errors) +
+                '</ul><p><a href="/add">返回修改</a></p>'), 400
 
     return render_template_string(SUCCESS_HTML, data=json.dumps(req, ensure_ascii=False, indent=2))
 

@@ -47,7 +47,7 @@ if [ "$(id -u)" -eq 0 ]; then
   systemctl daemon-reload
   systemctl enable --now client-crawler.timer
   systemctl enable --now dashboard.service
-  echo "==> Timer enabled: weekly Monday 09:00. Dashboard: http://<host-ip>:8080"
+  echo "==> Timer enabled: weekly Monday 09:00. Dashboard+添加爬虫: http://<host-ip>:8080 (form at /add)"
   echo "    Status: systemctl status client-crawler.timer ; systemctl status dashboard.service"
 else
   echo "==> Not root: skip systemd. To enable manually:"
@@ -55,7 +55,7 @@ else
   echo "    sudo sed -i \"s#__APP_DIR__#$APP_DIR#g; s#__USER__#$(id -un)#g\" /etc/systemd/system/client-crawler.service /etc/systemd/system/client-crawler.timer /etc/systemd/system/dashboard.service"
   echo "    sudo systemctl daemon-reload && sudo systemctl enable --now client-crawler.timer dashboard.service"
   echo "    Or cron for crawl: 0 9 * * 1  cd $APP_DIR && $APP_DIR/deploy/run_weekly.sh $APP_DIR >> /var/log/crawler.log 2>&1"
-  echo "    Dashboard (no root): cd $APP_DIR/dashboard && python3 -m http.server 8080 --bind 0.0.0.0"
+  echo "    Dashboard (no root): cd $APP_DIR && python3 dashboard/server.py"
 fi
 
 echo "==> DONE. Output JSON: $APP_DIR/data/<client>/<date>.json"
