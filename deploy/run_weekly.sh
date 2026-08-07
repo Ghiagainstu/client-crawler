@@ -5,6 +5,9 @@ set -euo pipefail
 APP_DIR="${1:-/opt/client-crawler}"
 cd "$APP_DIR"
 
+echo "==> Pulling latest code (new parsers / config from WorkBuddy)"
+git pull --ff-only || true
+
 echo "==> Crawling client news"
 ./venv/bin/python cli.py --client sasol
 
