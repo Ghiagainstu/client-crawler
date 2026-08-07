@@ -8,6 +8,9 @@ cd "$APP_DIR"
 echo "==> Crawling client news"
 ./venv/bin/python cli.py --client sasol
 
+echo "==> Building dashboard (dashboard/index.html)"
+./venv/bin/python dashboard/build.py
+
 echo "==> Pushing data/ to GitHub (force-add; data/ is gitignored locally)"
 git add -f data/ 2>/dev/null || true
 if git diff --cached --quiet; then
@@ -21,4 +24,4 @@ else
     echo "==> git push failed - check server git credential for github.com"
   fi
 fi
-echo "==> Done. WorkBuddy will sync new items to Notion."
+echo "==> Done. Dashboard served at http://<this-host-ip>:8080 (dashboard.service). WorkBuddy syncs Notion."

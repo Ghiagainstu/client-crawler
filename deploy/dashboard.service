@@ -1,0 +1,15 @@
+[Unit]
+Description=Client News Dashboard (LAN static file server)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__USER__
+WorkingDirectory=__APP_DIR__/dashboard
+# Serve the generated dashboard over the LAN on port 8080.
+ExecStart=__APP_DIR__/venv/bin/python -m http.server 8080 --bind 0.0.0.0
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

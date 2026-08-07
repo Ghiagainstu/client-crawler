@@ -15,9 +15,11 @@ git clone https://github.com/Ghiagainstu/client-crawler.git /opt/client-crawler
 2. python3 -m venv venv && venv/bin/pip install -r requirements.txt
 3. 冒烟测试：venv/bin/python cli.py --client sasol --limit 2
    确认生成 data/sasol/*.json 且含 title / published_at / content
-4. 定时任务（默认 systemd，每周一 09:00 跑 deploy/run_weekly.sh）：
-   cp deploy/client-crawler.service deploy/client-crawler.timer /etc/systemd/system/
-   systemctl daemon-reload && systemctl enable --now client-crawler.timer
+4. 定时任务 + 看板（默认 systemd）：
+   cp deploy/client-crawler.service deploy/client-crawler.timer deploy/dashboard.service /etc/systemd/system/
+   systemctl daemon-reload && systemctl enable --now client-crawler.timer dashboard.service
+   - client-crawler.timer：每周一 09:00 跑 deploy/run_weekly.sh（爬新闻 + 生成看板 + 推 GitHub）
+   - dashboard.service：在 0.0.0.0:8080 提供看板，团队访问 http://192.168.0.147:8080
    （频率 / 客户在 deploy/client-crawler.timer 的 OnCalendar 字段修改）
 5. 确保本机对 github.com 有 push 凭证（deploy key 或用户凭证），
    因为 run_weekly.sh 抓完会把 data/ 推回 GitHub，供 WorkBuddy 同步 Notion。

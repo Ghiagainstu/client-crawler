@@ -8,6 +8,9 @@ venv/
 # Crawler output (regenerated at runtime)
 data/
 
+# Generated dashboard (built by dashboard/build.py from data/)
+dashboard/index.html
+
 # Secrets / local env
 .env
 .env.*
