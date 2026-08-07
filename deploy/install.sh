@@ -29,17 +29,7 @@ python3 -m venv venv
 ./venv/bin/pip install -U pip -q
 ./venv/bin/pip install -r requirements.txt -q
 
-echo "==> Preparing .env (secrets) — fill NOTION_* if you use Notion sync"
-if [ ! -f "$APP_DIR/.env" ]; then
-  cat > "$APP_DIR/.env" <<'EOF'
-# Notion sync (optional). Leave blank to skip sync.
-# Get token from https://www.notion.com/my-integrations
-NOTION_TOKEN=
-NOTION_DATABASE_ID=
-EOF
-  chmod 600 "$APP_DIR/.env"
-  chown "$SERVICE_USER":"$SERVICE_USER" "$APP_DIR/.env" 2>/dev/null || true
-fi
+echo "==> Notion sync is handled by WorkBuddy (Notion MCP) — no token needed on this server."
 
 # Smoke test
 ./venv/bin/python cli.py --client sasol --limit 1 --no-articles
@@ -58,7 +48,7 @@ if [ "$(id -u)" -eq 0 ]; then
 else
   echo "==> Not root: skip systemd. To enable manually, copy deploy/*.service/.timer to /etc/systemd/system"
   echo "    and run: systemctl daemon-reload && systemctl enable --now client-crawler.timer"
-  echo "    Or use cron: 0 9 * * 1  cd $APP_DIR && $APP_DIR/venv/bin/python cli.py --client sasol --notion >> /var/log/crawler.log 2>&1"
+  echo "    Or use cron: 0 9 * * 1  cd $APP_DIR && $APP_DIR/deploy/run_weekly.sh $APP_DIR >> /var/log/crawler.log 2>&1"
 fi
 
 echo "==> DONE. Output JSON: $APP_DIR/data/<client>/<date>.json"

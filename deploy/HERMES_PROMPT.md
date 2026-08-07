@@ -1,0 +1,42 @@
+# Hermes 部署 Prompt（client-crawler）
+
+> 复制下面整段，发给运行在 `192.168.0.147` 上的 hermes agent 即可。
+
+```
+角色：你是部署 agent，运行在 Ubuntu 主机 192.168.0.147。
+任务：一次性部署 client-crawler 新闻爬虫并配置每周定时任务。部署后由系统定时器自动运行，无需 AI 常驻。
+
+代码来源：
+git clone https://github.com/Ghiagainstu/client-crawler.git /opt/client-crawler
+（若你的 GitHub 登录名不是 Ghiagainstu，替换为实际 clone URL）
+
+步骤：
+1. cd /opt/client-crawler
+2. python3 -m venv venv && venv/bin/pip install -r requirements.txt
+3. 冒烟测试：venv/bin/python cli.py --client sasol --limit 2
+   确认生成 data/sasol/*.json 且含 title / published_at / content
+4. 定时任务（默认 systemd，每周一 09:00 跑 deploy/run_weekly.sh）：
+   cp deploy/client-crawler.service deploy/client-crawler.timer /etc/systemd/system/
+   systemctl daemon-reload && systemctl enable --now client-crawler.timer
+   （频率 / 客户在 deploy/client-crawler.timer 的 OnCalendar 字段修改）
+5. 确保本机对 github.com 有 push 凭证（deploy key 或用户凭证），
+   因为 run_weekly.sh 抓完会把 data/ 推回 GitHub，供 WorkBuddy 同步 Notion。
+6. 汇报：部署结果、冒烟测试条数、下次运行时间。
+
+注意：
+- Notion 同步由另一侧的 WorkBuddy（已连 Notion MCP）负责，你无需处理 token 或 MCP。
+- 后续 HTML 看板也承载在这台机上，团队通过局域网访问。
+约束：遵守 robots.txt，代码内已限速（article_delay=1s），不泄露任何密钥。
+```
+
+---
+
+## 架构说明（给你参考）
+- **Ubuntu（hermes）**：每周一 09:00 跑 `run_weekly.sh` → 抓 Sasol 新闻 → `data/` 推回 GitHub。
+- **WorkBuddy（Notion MCP）**：每周一 10:00 拉取 GitHub 上的 `data/`，调用 Notion MCP 把新条目写入
+  数据库 **客户每周新闻汇总**（ID `8c48dd185e224af4ac7237e98ae1a86e`），按 `source_url` 去重。
+- 服务器不需要任何 Notion 密钥。
+
+## 你（火哥）要确认
+- hermes 跑完部署后，第一次 `run_weekly.sh` 能成功 `git push`（否则 WorkBuddy 收不到数据）。
+- 看板（团队 LAN 访问）是独立一块，尚未搭建。

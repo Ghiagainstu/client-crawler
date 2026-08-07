@@ -52,35 +52,27 @@ clients:
 2. 在 `crawler/parsers/__init__.py` 的 `REGISTRY` / `BASE_URL` 注册。
 3. 在 `config/sites.yaml` 增加该客户条目。
 
-## Notion 同步（可选）
-设置环境变量后加 `--notion` 即推送：
-```bash
-export NOTION_TOKEN="ntn_xxx"            # 内部集成密钥，勿硬编码
-export NOTION_DATABASE_ID="xxxxxxxx"
-python cli.py --client sasol --notion
-```
-要求：Notion 集成对该 database 有 Insert 权限；目标库属性含 `Name/Client/Published/Media Source/Source URL`。
+## Notion 同步（由 WorkBuddy 侧完成，使用 Notion MCP）
+Notion MCP 仅连接在 WorkBuddy（本机），不在 Ubuntu 服务器，因此同步在 WorkBuddy 跑：
 
-## 部署到 Ubuntu 192.168.0.147
-仓库自带一键部署包（`deploy/`），含 venv 安装、`.env` 密钥模板、systemd timer：
+- 目标库（已建，工作区根目录）：**客户每周新闻汇总**
+  - 数据库 ID：`8c48dd185e224af4ac7237e98ae1a86e`
+  - data_source_id：`8a95ff01-605f-4fe7-9399-a9a5d68d5d29`
+  - 属性：标题 / 客户 / 发布日期 / 来源媒体(URL) / 原文链接(URL) / 摘要 / 抓取时间
+- 数据流：Ubuntu 爬虫产出 `data/<client>/*.json` → `run_weekly.sh` 推回 GitHub → WorkBuddy 定时 `git pull` 并调用 Notion MCP 写入（按 `source_url` 去重）。
+- 已配置 WorkBuddy 自动化「client-crawler Notion sync」（每周一 10:00）自动执行上述同步。
+- 旧版 `crawler/notion_sync.py`（读 `NOTION_TOKEN` 环境变量）保留作离线兜底，默认不走它。
 
-```bash
-# 1) 把整个仓库传到服务器（任选其一）
-scp -r . deploy@192.168.0.147:/opt/client-crawler        # 或用 git clone / tarball
-ssh deploy@192.168.0.147
+## 部署到 Ubuntu 192.168.0.147（hermes agent）
+代码已推到 GitHub 私有仓 `https://github.com/Ghiagainstu/client-crawler`。
+给 hermes 的部署 prompt 见 `deploy/HERMES_PROMPT.md`（复制整段发给 hermes 即可）。
 
-# 2) 在服务器上执行（root 会自动装 systemd 定时器；非 root 仅装 venv + 提示 cron）
-sudo bash /opt/client-crawler/deploy/install.sh /opt/client-crawler deploy
-```
-
-`install.sh` 会：建 venv → 装依赖 → 生成 `.env`（600 权限，填 Notion 密钥）→ 冒烟测试 →（root）启用每周一 09:00 的 `client-crawler.timer`。
-
-- 非 root / 不想用 systemd：用 cron 替代
-  ```cron
-  0 9 * * 1  cd /opt/client-crawler && /opt/client-crawler/venv/bin/python cli.py --client sasol --notion >> /var/log/crawler.log 2>&1
-  ```
-- 看板读取 `data/<client>/*.json` 生成每周汇总。
-- 改频率：编辑 `deploy/client-crawler.timer` 的 `OnCalendar` 后 `systemctl daemon-reload`。
+要点：
+- hermes `git clone` → 建 venv → systemd timer 每周一 09:00 跑 `deploy/run_weekly.sh`。
+- `run_weekly.sh`：抓 Sasol 新闻 → 把 `data/` force-add 并 `git push` 回 GitHub。
+- **服务器不碰 Notion token**：同步由 WorkBuddy 侧完成（见上）。
+- 要求：服务器对 github.com 有 push 凭证（deploy key / 用户凭证）。
+- 看板读取 `data/<client>/*.json` 生成每周汇总（看板另建）。
 
 ## 合规
 - 默认尊重 `robots.txt`（`core.py` 中 `check_robots`）。

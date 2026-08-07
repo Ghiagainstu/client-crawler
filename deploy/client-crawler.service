@@ -7,6 +7,6 @@ Wants=network-online.target
 Type=oneshot
 User=__USER__
 WorkingDirectory=__APP_DIR__
-EnvironmentFile=__APP_DIR__/.env
-# Add more --client lines or loop over clients as needed
-ExecStart=__APP_DIR__/venv/bin/python __APP_DIR__/cli.py --client sasol --notion
+# Notion sync is done by WorkBuddy (Notion MCP) - this server needs no token.
+# Add more --client lines or loop over clients as needed.
+ExecStart=__APP_DIR__/deploy/run_weekly.sh __APP_DIR__
