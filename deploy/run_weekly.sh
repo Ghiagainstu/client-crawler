@@ -8,8 +8,12 @@ cd "$APP_DIR"
 echo "==> Pulling latest code (new parsers / config from WorkBuddy)"
 git pull --ff-only || true
 
-echo "==> Crawling client news"
-./venv/bin/python cli.py --client sasol
+echo "==> Crawling all configured clients"
+CLIENTS=$(./venv/bin/python -c "import yaml;print(' '.join(yaml.safe_load(open('config/sites.yaml'))['clients'].keys()))")
+for c in $CLIENTS; do
+  echo "---- client: $c ----"
+  ./venv/bin/python cli.py --client "$c"
+done
 
 echo "==> Building dashboard (dashboard/index.html)"
 ./venv/bin/python dashboard/build.py
