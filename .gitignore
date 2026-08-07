@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Crawler output (regenerated at runtime)
+data/
+
+# Secrets / local env
+.env
+.env.*
+*.token
+
+# OS / editor
+.DS_Store
+Thumbs.db

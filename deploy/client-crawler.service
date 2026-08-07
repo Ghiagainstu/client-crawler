@@ -1,0 +1,12 @@
+[Unit]
+Description=Client News Crawler (Sasol + others)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=__USER__
+WorkingDirectory=__APP_DIR__
+EnvironmentFile=__APP_DIR__/.env
+# Add more --client lines or loop over clients as needed
+ExecStart=__APP_DIR__/venv/bin/python __APP_DIR__/cli.py --client sasol --notion

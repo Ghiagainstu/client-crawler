@@ -1,0 +1,10 @@
+clients:
+  sasol:
+    name: Sasol
+    parser: sasol
+    list_url: https://www.sasol.com/media-centre/media-releases
+    media_source: Sasol Media Centre
+    media_source_url: https://www.sasol.com/media-centre/media-releases
+    fetch_articles: true      # mixed mode: also pull full article body
+    article_delay: 1.0        # seconds between article fetches (politeness)
+    limit: 0                  # 0 = no limit (all items)
