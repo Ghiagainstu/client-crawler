@@ -64,6 +64,7 @@ git clone https://github.com/Ghiagainstu/client-crawler.git /opt/client-crawler
 - **S: 盘归档 + KB 骨架**：每次爬取后 `kb_export` 把原始数据写 `S_DRIVE_ROOT/<client>/<category>/<date>.json`，并在 `S_DRIVE_ROOT/Obsidian/<client>/KB/` 生成 00-Index / 01-Facts / 02-Selling / 03-Compliance 骨架文件（idempotent，不覆盖已有内容）。AI 抽取事实/卖点填入 01/02 由 WorkBuddy 侧完成（option-3 分工），服务器不调 LLM。
 - S_DRIVE_ROOT 通过 `.env`（gitignored）注入，client-crawler.service 与 dashboard.service 均用 `EnvironmentFile=-.../.env` 读取。
 - **运行状态监控**：`run_weekly.sh` 末尾写 `status.json`（last_run / 各客户条数 / 0 条告警），8082 看板页头显示「上次运行时间 + 条数」，任一客户 0 条标红提醒；若配了 `WECOM_WEBHOOK` 还会推企业微信。
+- **全站结构化入库（site 模式，手动触发，无定时器）**：`python cli.py --client <客户> --mode site [--limit N]`。它会发现全站 URL（先读 robots.txt 里的 Sitemap，没有就 BFS 爬，遵守 robots.txt + 限速），按 URL 路径第一段归类板块（可在 sites.yaml 用 `site_sections` 把路径段映射成友好名，如 `our-businesses: 业务`），逐页抽正文，输出到 `S_DRIVE_ROOT/<client>/site/<日期>.json`（按板块分组全文）+ `<日期>_index.json`（板块→页标题/链接清单，直接回答「网站有什么」）+ `<日期>_index.md`（人读大纲）。`site_max_pages`（默认 500）、`site_delay`、`site_max_depth` 在 sites.yaml 可调。这一步**不在定时器里**，需要看全站结构时由火哥/agent 手动跑一次。
 
 ## 你（火哥）要确认
 - hermes 跑完部署后，第一次 `run_weekly.sh` 能在 S: 盘生成 `sasol/news/<日期>.json` 与 `Obsidian/sasol/KB/` 四层文件（否则 WorkBuddy 收不到数据）。GitHub push 已不再需要（数据走 S: 盘）；仅需确认服务器 `git pull` 能拉到代码（若不通，代码更新改由 hermes rsync）。

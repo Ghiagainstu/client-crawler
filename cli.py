@@ -27,6 +27,7 @@ from crawler.parsers import get_parser, BASE_URL
 from crawler import pipeline
 from crawler import notion_sync
 from crawler import kb_export
+from crawler import site_crawler
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("cli")
@@ -41,7 +42,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--client", required=True, help="client key in config/sites.yaml")
     ap.add_argument("--config", default=os.path.join(os.path.dirname(__file__), "config", "sites.yaml"))
-    ap.add_argument("--limit", type=int, default=0, help="max listings to process (0=all)")
+    ap.add_argument("--mode", choices=["news", "site"], default="news",
+                    help="news = list-page crawl (default, weekly); site = full-site structured crawl (manual)")
+    ap.add_argument("--limit", type=int, default=0, help="news: max listings; site: max pages (0=config default)")
     ap.add_argument("--no-articles", action="store_true", help="skip fetching article bodies")
     ap.add_argument("--notion", action="store_true", help="push results to Notion (needs env)")
     ap.add_argument("--out", default=None, help="output JSON path (default data/<client>/<date>.json)")
@@ -52,6 +55,26 @@ def main():
         log.error("client '%s' not found. Known: %s", args.client, list(cfg_all["clients"]))
         sys.exit(1)
     c = cfg_all["clients"][args.client]
+
+    # ---- full-site structured crawl (manual trigger) ----
+    if args.mode == "site":
+        log.info("site mode: structured full-site crawl for %s", args.client)
+        result = site_crawler.crawl_site(
+            args.client, c,
+            max_pages=(args.limit if args.limit else None),
+            max_depth=int(c.get("site_max_depth", 3)),
+        )
+        exp = site_crawler.export_site(args.client, result)
+        print(f"\n=== site: {result['total_pages']} pages, "
+              f"{len(result['sections'])} sections ===")
+        for sec, items in sorted(result["sections"].items(),
+                                 key=lambda x: -len(x[1])):
+            print(f"- {sec}: {len(items)} 页")
+        print(f"\nlocal: {exp['local']}")
+        root = os.environ.get("S_DRIVE_ROOT")
+        if root:
+            print(f"S: {os.path.join(root, args.client, 'site')}/")
+        return
 
     parser = get_parser(c["parser"])
     base = BASE_URL.get(c["parser"], "")

@@ -2,9 +2,20 @@ clients:
   sasol:
     name: Sasol
     parser: sasol
+    base_url: https://www.sasol.com   # site-mode root (defaults to list_url if absent)
     list_url: https://www.sasol.com/media-centre/media-releases
     media_source: Sasol Media Centre
     media_source_url: https://www.sasol.com/media-centre/media-releases
     fetch_articles: true      # mixed mode: also pull full article body
     article_delay: 1.0        # seconds between article fetches (politeness)
     limit: 0                  # 0 = no limit (all items)
+    # ---- site-mode (full-site structured crawl) options ----
+    site_max_pages: 500       # hard cap on pages crawled per run
+    site_delay: 0.5           # seconds between page fetches (politeness)
+    site_max_depth: 3         # BFS depth when sitemap is thin
+    # site_sections:          # optional: map URL first-segment -> friendly name
+    #   media-centre: 媒体发布
+    #   our-businesses: 业务
+    #   investors: 投资者
+    #   sustainability: 可持续
+    #   who-we-are: 关于我们
