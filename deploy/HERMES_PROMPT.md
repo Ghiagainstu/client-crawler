@@ -26,7 +26,7 @@ git clone https://github.com/Ghiagainstu/client-crawler.git /opt/client-crawler
    cp deploy/client-crawler.service deploy/client-crawler.timer deploy/crawler-check.service deploy/crawler-check.timer deploy/dashboard.service /etc/systemd/system/
    systemctl daemon-reload && systemctl enable --now client-crawler.timer crawler-check.timer dashboard.service
    - client-crawler.timer：每周一 09:00 跑 deploy/run_weekly.sh（爬全部已接入客户 + 生成看板 + 写 S: 盘）。
-   - crawler-check.timer：每天 19:00 跑 deploy/check_queue_and_crawl.sh（纯代码，**不调 AI**）。
+   - crawler-check.timer：每周一/三/五 19:00 跑 deploy/check_queue_and_crawl.sh（纯代码，**不调 AI**）。
      它读 S: 盘队列 `_crawler_queue/requests/<客户>.json`，对「已被 WorkBuddy 写好解析器、
      已加入 config/sites.yaml」的客户爬一次（用 `_crawler_queue/processed/<客户>.marker` 做幂等
      去重，agent 改了录入才重爬）；未接入的客户跳过，留给 agent。爬完重建看板 + 状态。
@@ -40,8 +40,8 @@ git clone https://github.com/Ghiagainstu/client-crawler.git /opt/client-crawler
      「火哥的绿龙虾」直接从局域网共享读取并接手写解析器、再 push 代码让服务器 pull 爬取。
      数据/录入不再经过 GitHub。
    - 依赖：requirements.txt 已含 flask>=3.0，install.sh 第 30 行已 pip 安装；无需额外操作。
-   （周一全量频率在 deploy/client-crawler.timer 的 OnCalendar；每晚提交检查在
-    deploy/crawler-check.timer 的 OnCalendar，均为系统本地时区。）
+   （周一全量频率在 deploy/client-crawler.timer 的 OnCalendar；一/三/五晚提交检查在
+    deploy/crawler-check.timer 的 OnCalendar=Mon,Wed,Fri 19:00:00，均为系统本地时区。）
 5. GitHub 仅用于「代码分发」：WorkBuddy 侧 push parser/config 改动，服务器 git pull 拉取
    （run_weekly.sh 第一步）。爬取数据、KB、录入队列全部走 S: 盘，不再 push 任何数据到 GitHub，
    故服务器无需 github.com 的 push 凭证（只需能 git pull 代码即可；若 pull 也不通，可由 hermes

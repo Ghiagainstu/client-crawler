@@ -1,10 +1,11 @@
 [Unit]
-Description=Daily 19:00 check for new crawler submissions (pure code, no AI)
-# Runs every day at 19:00 local time. If the 8082/add form received a new
-# submission that the agent has already onboarded, the crawler runs for it.
-# OnCalendar uses the system timezone (set tzdata / timedatectl on Ubuntu).
+Description=Mon/Wed/Fri 19:00 check for new crawler submissions (pure code, no AI)
+# Runs every Monday, Wednesday, Friday at 19:00 local time. If the 8082/add
+# form received a new submission that the agent has already onboarded, the
+# crawler runs for it. OnCalendar uses the system timezone
+# (set tzdata / timedatectl on Ubuntu).
 [Timer]
-OnCalendar=*-*-* 19:00:00
+OnCalendar=Mon,Wed,Fri 19:00:00
 Persistent=true
 RandomizedDelaySec=60
 
