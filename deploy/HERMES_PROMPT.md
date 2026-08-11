@@ -23,9 +23,14 @@ git clone https://github.com/Ghiagainstu/client-crawler.git /opt/client-crawler
    确认生成 data/sasol/*.json 且含 title / published_at / content；
    同时应在 S_DRIVE_ROOT 下看到 sasol/ 与 Obsidian/sasol/KB/ 目录结构生成。
 4. 定时任务 + 看板（默认 systemd）：
-   cp deploy/client-crawler.service deploy/client-crawler.timer deploy/dashboard.service /etc/systemd/system/
-   systemctl daemon-reload && systemctl enable --now client-crawler.timer dashboard.service
-   - client-crawler.timer：每周一 09:00 跑 deploy/run_weekly.sh（爬新闻 + 生成看板 + 写 S: 盘）。
+   cp deploy/client-crawler.service deploy/client-crawler.timer deploy/crawler-check.service deploy/crawler-check.timer deploy/dashboard.service /etc/systemd/system/
+   systemctl daemon-reload && systemctl enable --now client-crawler.timer crawler-check.timer dashboard.service
+   - client-crawler.timer：每周一 09:00 跑 deploy/run_weekly.sh（爬全部已接入客户 + 生成看板 + 写 S: 盘）。
+   - crawler-check.timer：每天 19:00 跑 deploy/check_queue_and_crawl.sh（纯代码，**不调 AI**）。
+     它读 S: 盘队列 `_crawler_queue/requests/<客户>.json`，对「已被 WorkBuddy 写好解析器、
+     已加入 config/sites.yaml」的客户爬一次（用 `_crawler_queue/processed/<客户>.marker` 做幂等
+     去重，agent 改了录入才重爬）；未接入的客户跳过，留给 agent。爬完重建看板 + 状态。
+     这样 Windows 端白天提交新客户后，无需等周一、也无需 AI 常驻，当晚 19:00 自动爬。
    - dashboard.service：在 0.0.0.0:8082 跑 dashboard/server.py（Flask）；并读取 .env 里的
      S_DRIVE_ROOT，使 /submit 录入能同步到 S: 盘队列。团队访问
      http://192.168.0.147:8082 看新闻汇总；页头「＋ 添加爬虫」→ /add 填表加新客户。
@@ -35,7 +40,8 @@ git clone https://github.com/Ghiagainstu/client-crawler.git /opt/client-crawler
      「火哥的绿龙虾」直接从局域网共享读取并接手写解析器、再 push 代码让服务器 pull 爬取。
      数据/录入不再经过 GitHub。
    - 依赖：requirements.txt 已含 flask>=3.0，install.sh 第 30 行已 pip 安装；无需额外操作。
-   （频率 / 客户在 deploy/client-crawler.timer 的 OnCalendar 字段修改）
+   （周一全量频率在 deploy/client-crawler.timer 的 OnCalendar；每晚提交检查在
+    deploy/crawler-check.timer 的 OnCalendar，均为系统本地时区。）
 5. GitHub 仅用于「代码分发」：WorkBuddy 侧 push parser/config 改动，服务器 git pull 拉取
    （run_weekly.sh 第一步）。爬取数据、KB、录入队列全部走 S: 盘，不再 push 任何数据到 GitHub，
    故服务器无需 github.com 的 push 凭证（只需能 git pull 代码即可；若 pull 也不通，可由 hermes
@@ -53,7 +59,7 @@ git clone https://github.com/Ghiagainstu/client-crawler.git /opt/client-crawler
 ---
 
 ## 架构说明（给你参考）
-- **Ubuntu（hermes）**：每周一 09:00 跑 `run_weekly.sh` → 抓新闻 → `data/` + 写 S: 盘（`kb_export`）+ 生成看板 + 写 `status.json`（运行状态）。数据 / KB / 录入队列全部落 S: 盘，**不经过 GitHub**。GitHub 仅在脚本第一步 `git pull` 拉最新代码。
+- **Ubuntu（hermes）**：每周一 09:00 跑 `run_weekly.sh` → 抓全部已接入客户 → `data/` + 写 S: 盘（`kb_export`）+ 生成看板 + 写 `status.json`（运行状态）。另外每天 19:00 跑 `check_queue_and_crawl.sh`（纯 bash，**不调 AI**）→ 读 S: 盘提交队列，对「已接入」的新客户爬一次并重建看板。数据 / KB / 录入队列全部落 S: 盘，**不经过 GitHub**。GitHub 仅在脚本第一步 `git pull` 拉最新代码。
 - **WorkBuddy（Notion MCP / AI）**：每周一 10:00 直接读取 S: 盘上的 `data/`（S_DRIVE_ROOT 局域网共享，WorkBuddy 侧可达），调用 Notion MCP 把新条目写入数据库 **客户每周新闻汇总**（ID `8c48dd185e224af4ac7237e98ae1a86e`），按 `source_url` 去重；并读取 S: 盘队列 `S_DRIVE_ROOT/_crawler_queue/queue.jsonl` 接手新录入。服务器不需要任何 Notion 密钥。
 - **S: 盘归档 + KB 骨架**：每次爬取后 `kb_export` 把原始数据写 `S_DRIVE_ROOT/<client>/<category>/<date>.json`，并在 `S_DRIVE_ROOT/Obsidian/<client>/KB/` 生成 00-Index / 01-Facts / 02-Selling / 03-Compliance 骨架文件（idempotent，不覆盖已有内容）。AI 抽取事实/卖点填入 01/02 由 WorkBuddy 侧完成（option-3 分工），服务器不调 LLM。
 - S_DRIVE_ROOT 通过 `.env`（gitignored）注入，client-crawler.service 与 dashboard.service 均用 `EnvironmentFile=-.../.env` 读取。

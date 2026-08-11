@@ -50,17 +50,24 @@ if [ "$(id -u)" -eq 0 ]; then
       "$HERE/deploy/client-crawler.timer" > /etc/systemd/system/client-crawler.timer
   sed "s#__APP_DIR__#$APP_DIR#g; s#__USER__#$SERVICE_USER#g" \
       "$HERE/deploy/dashboard.service" > /etc/systemd/system/dashboard.service
+  sed "s#__APP_DIR__#$APP_DIR#g; s#__USER__#$SERVICE_USER#g" \
+      "$HERE/deploy/crawler-check.service" > /etc/systemd/system/crawler-check.service
+  sed "s#__APP_DIR__#$APP_DIR#g; s#__USER__#$SERVICE_USER#g" \
+      "$HERE/deploy/crawler-check.timer" > /etc/systemd/system/crawler-check.timer
   systemctl daemon-reload
   systemctl enable --now client-crawler.timer
+  systemctl enable --now crawler-check.timer
   systemctl enable --now dashboard.service
-  echo "==> Timer enabled: weekly Monday 09:00. Dashboard+添加爬虫: http://<host-ip>:8082 (form at /add)"
-  echo "    Status: systemctl status client-crawler.timer ; systemctl status dashboard.service"
+  echo "==> Timer enabled: weekly Monday 09:00 (all clients) + daily 19:00 (new submissions)."
+  echo "    Dashboard+添加爬虫: http://<host-ip>:8082 (form at /add)"
+  echo "    Status: systemctl status client-crawler.timer crawler-check.timer dashboard.service"
 else
   echo "==> Not root: skip systemd. To enable manually:"
-  echo "    sudo cp $HERE/deploy/client-crawler.service $HERE/deploy/client-crawler.timer $HERE/deploy/dashboard.service /etc/systemd/system/"
-  echo "    sudo sed -i \"s#__APP_DIR__#$APP_DIR#g; s#__USER__#$(id -un)#g\" /etc/systemd/system/client-crawler.service /etc/systemd/system/client-crawler.timer /etc/systemd/system/dashboard.service"
-  echo "    sudo systemctl daemon-reload && sudo systemctl enable --now client-crawler.timer dashboard.service"
+  echo "    sudo cp $HERE/deploy/client-crawler.service $HERE/deploy/client-crawler.timer $HERE/deploy/crawler-check.service $HERE/deploy/crawler-check.timer $HERE/deploy/dashboard.service /etc/systemd/system/"
+  echo "    sudo sed -i \"s#__APP_DIR__#$APP_DIR#g; s#__USER__#$(id -un)#g\" /etc/systemd/system/client-crawler.service /etc/systemd/system/client-crawler.timer /etc/systemd/system/crawler-check.service /etc/systemd/system/crawler-check.timer /etc/systemd/system/dashboard.service"
+  echo "    sudo systemctl daemon-reload && sudo systemctl enable --now client-crawler.timer crawler-check.timer dashboard.service"
   echo "    Or cron for crawl: 0 9 * * 1  cd $APP_DIR && $APP_DIR/deploy/run_weekly.sh $APP_DIR >> /var/log/crawler.log 2>&1"
+  echo "    Or cron for nightly submission check: 0 19 * * *  cd $APP_DIR && $APP_DIR/deploy/check_queue_and_crawl.sh $APP_DIR >> /var/log/crawler-check.log 2>&1"
   echo "    Dashboard (no root): cd $APP_DIR && python3 dashboard/server.py"
 fi
 

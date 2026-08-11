@@ -1,0 +1,15 @@
+[Unit]
+Description=Client News Crawler — nightly submission check + on-demand crawl
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=__USER__
+WorkingDirectory=__APP_DIR__
+# Optional env file (gitignored). Provides S_DRIVE_ROOT for the queue + kb_export.
+# The leading '-' makes it optional: missing .env won't break the timer.
+EnvironmentFile=-__APP_DIR__/.env
+# Pure code path: reads S: drive submissions, crawls onboarded clients, rebuilds
+# the dashboard. Does NOT call the hermes/WorkBuddy AI at runtime.
+ExecStart=__APP_DIR__/deploy/check_queue_and_crawl.sh __APP_DIR__
