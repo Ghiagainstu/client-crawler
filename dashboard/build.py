@@ -37,6 +37,20 @@ def load_items(data_dir: str):
     return items
 
 
+def load_sites(data_dir: str):
+    """Read each client's site crawl index (data/<client>/site/*_index.json)."""
+    sites = []
+    for path in sorted(glob.glob(os.path.join(data_dir, "*", "site", "*_index.json"))):
+        try:
+            with open(path, encoding="utf-8") as f:
+                idx = json.load(f)
+        except Exception:  # noqa: BLE001
+            continue
+        if isinstance(idx, dict) and idx.get("sections"):
+            sites.append(idx)
+    return sites
+
+
 def _load_status(here: str):
     sp = os.path.join(here, "_status.json")
     if os.path.exists(sp):
@@ -102,6 +116,20 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           vertical-align:middle}
   .addbtn:hover{filter:brightness(.95)}
   .addbtn.alt{background:var(--badge)}
+  .tabs{display:flex;gap:8px;margin-top:10px}
+  .site-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow);margin:14px 0}
+  .site-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+  .site-root{color:var(--accent);text-decoration:none;font-size:13px;word-break:break-all}
+  .site-root:hover{text-decoration:underline}
+  .section{border-top:1px dashed var(--line);padding:8px 0}
+  .section summary{cursor:pointer;display:flex;align-items:center;gap:10px;font-weight:600;font-size:14px}
+  .sec-count{color:var(--muted);font-weight:400;font-size:12px}
+  .page-list{list-style:none;margin:8px 0 0;padding:0 0 0 18px}
+  .page-list li{display:flex;justify-content:space-between;gap:12px;padding:4px 0;border-bottom:1px solid var(--line);font-size:13px}
+  .page-list li a{color:var(--ink);text-decoration:none}
+  .page-list li a:hover{color:var(--accent);text-decoration:underline}
+  .wc{color:var(--muted);font-size:12px;white-space:nowrap}
+  code{background:var(--accent-soft);padding:1px 6px;border-radius:5px;font-size:12px}
 </style>
 </head>
 <body>
@@ -114,10 +142,20 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <div class="chips" id="chips"></div>
     <input class="search" id="q" placeholder="搜索标题 / 摘要 / 客户…" oninput="render()">
   </div>
+  <div class="tabs">
+    <span class="chip active" id="tab-news" onclick="setTab('news')">📰 每周新闻</span>
+    <span class="chip" id="tab-site" onclick="setTab('site')">🗂️ 全站结构</span>
+  </div>
 </div></header>
 <main class="wrap">
-  <div class="meta" id="meta"></div>
-  <div class="grid" id="grid"></div>
+  <div id="view-news">
+    <div class="meta" id="meta"></div>
+    <div class="grid" id="grid"></div>
+  </div>
+  <div id="view-site" style="display:none">
+    <div class="meta" id="site-meta"></div>
+    <div id="sites"></div>
+  </div>
 </main>
 <script>
 const DB = /*__DATA__*/;
@@ -165,6 +203,44 @@ if (st && st.last_run) {
 }
 document.getElementById("sub").textContent = sub;
 buildChips(); render();
+
+let activeTab = "news";
+function setTab(t){
+  activeTab = t;
+  document.getElementById("tab-news").classList.toggle("active", t==="news");
+  document.getElementById("tab-site").classList.toggle("active", t==="site");
+  document.getElementById("view-news").style.display = t==="news" ? "" : "none";
+  document.getElementById("view-site").style.display = t==="site" ? "" : "none";
+  if(t==="site") renderSites();
+}
+function renderSites(){
+  const wrap = document.getElementById("sites");
+  const sites = DB.sites || [];
+  if(!sites.length){
+    wrap.innerHTML = `<div class="empty">还没有全站结构数据。运行 <code>python cli.py --client &lt;key&gt; --mode site</code> 后会自动出现在这里。</div>`;
+    document.getElementById("site-meta").textContent = "";
+    return;
+  }
+  let total = 0; sites.forEach(s => total += s.total_pages);
+  document.getElementById("site-meta").textContent =
+     `共 ${sites.length} 个站点 · ${total} 页正文 · 点击板块展开页面`;
+  wrap.innerHTML = sites.map(s=>{
+    const secs = Object.entries(s.sections||{}).sort((a,b)=>b[1].count-a[1].count);
+    return `<div class="site-card">
+      <div class="site-head">
+        <span class="badge">${esc(s.client)}</span>
+        <a class="site-root" href="${esc(s.base_url||'#')}" target="_blank" rel="noopener">${esc(s.base_url||"")}</a>
+        <span class="date">${s.total_pages} 页 · ${esc((s.crawled_at||"").slice(0,10))}</span>
+      </div>
+      ${secs.map(([name,info])=>`
+        <details class="section">
+          <summary><span class="sec-name">${esc(name)}</span><span class="sec-count">${info.count} 页</span></summary>
+          <ul class="page-list">${info.pages.map(p=>`<li><a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.title||'(无标题)')}</a><span class="wc">${p.word_count||0} 字</span></li>`).join("")}</ul>
+        </details>`).join("")}
+    </div>`;
+  }).join("");
+}
+setTab("news");
 </script>
 </body>
 </html>
@@ -181,7 +257,8 @@ def main():
     items.sort(key=pdate, reverse=True)
     clients = sorted({it.get("client", "") for it in items if it.get("client")})
     status = _load_status(HERE)
-    payload = json.dumps({"clients": clients, "items": items, "status": status}, ensure_ascii=False)
+    sites = load_sites(args.data_dir)
+    payload = json.dumps({"clients": clients, "items": items, "status": status, "sites": sites}, ensure_ascii=False)
     out = HTML_TEMPLATE.replace("/*__DATA__*/", payload)
 
     os.makedirs(os.path.dirname(args.out), exist_ok=True)

@@ -242,8 +242,26 @@ def extract_content(html: str, url: str) -> dict:
     }
 
 
+def _save_checkpoint(result: dict, path: str) -> None:
+    """Persist partial progress so an interrupted long crawl can resume."""
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(result, f, ensure_ascii=False, indent=2)
+        log.info("checkpoint saved: %s (%d pages)", path, result["total_pages"])
+    except Exception as e:  # noqa: BLE001
+        log.warning("checkpoint save failed: %s", e)
+
+
 def crawl_site(client: str, cfg: dict, *, max_pages: int | None = None,
-               delay: float | None = None, max_depth: int = 3) -> dict:
+               delay: float | None = None, max_depth: int = 3,
+               resume: bool = False, checkpoint_every: int = 25) -> dict:
+    """Full-site structured crawl with checkpoint + resume.
+
+    A checkpoint is written to data/<client>/site/.inprogress.json every
+    `checkpoint_every` pages, so if the run is killed mid-way the progress is
+    not lost. Pass resume=True to skip URLs already captured in that file.
+    """
     base = cfg.get("base_url") or cfg.get("list_url")
     if not base:
         raise ValueError(f"client {client} needs base_url/list_url")
@@ -251,13 +269,31 @@ def crawl_site(client: str, cfg: dict, *, max_pages: int | None = None,
     max_pages = max_pages or int(cfg.get("site_max_pages", 500))
     delay = delay or float(cfg.get("site_delay", 0.5))
     aliases = cfg.get("site_sections") or {}
+    cp_path = os.path.join("data", client, "site", ".inprogress.json")
+    resume_from = cp_path if resume else None
+
+    # resume: reload already-captured pages/sections
+    pages: list[dict] = []
+    sections: dict[str, list[dict]] = {}
+    seen_urls: set[str] = set()
+    if resume_from and os.path.exists(resume_from):
+        try:
+            prev = json.load(open(resume_from, encoding="utf-8"))
+            for sec, items in prev.get("sections", {}).items():
+                sections.setdefault(sec, []).extend(items)
+                for it in items:
+                    pages.append(it)
+                    seen_urls.add(it["url"])
+            log.info("resumed from %s: %d pages already done", resume_from, len(pages))
+        except Exception as e:  # noqa: BLE001
+            log.warning("resume load failed: %s", e)
 
     log.info("discovering up to %d pages for %s (%s)", max_pages, client, base)
     urls = discover_urls(base, netloc, max_pages, max_depth)
-    log.info("discovered %d URLs to crawl", len(urls))
+    urls = [u for u in urls if u not in seen_urls]
+    log.info("discovered %d new URLs (%d already done)", len(urls), len(seen_urls))
 
-    sections: dict[str, list[dict]] = {}
-    pages: list[dict] = []
+    done = 0
     for i, url in enumerate(urls, 1):
         if not can_fetch(url):
             log.info("robots disallows %s — skip", url)
@@ -272,6 +308,13 @@ def crawl_site(client: str, cfg: dict, *, max_pages: int | None = None,
         c["section"] = sec
         sections.setdefault(sec, []).append(c)
         pages.append(c)
+        done += 1
+        if checkpoint_every and done % checkpoint_every == 0:
+            _save_checkpoint({
+                "client": client, "base_url": base,
+                "crawled_at": datetime.now(timezone.utc).isoformat(),
+                "total_pages": len(pages), "sections": sections,
+            }, cp_path)
         if i % 25 == 0:
             log.info("progress %d/%d", i, len(urls))
         time.sleep(delay)
@@ -283,6 +326,12 @@ def crawl_site(client: str, cfg: dict, *, max_pages: int | None = None,
         "total_pages": len(pages),
         "sections": sections,
     }
+    # success: drop the checkpoint file
+    if os.path.exists(cp_path):
+        try:
+            os.remove(cp_path)
+        except Exception:  # noqa: BLE001
+            pass
     return result
 
 

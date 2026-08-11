@@ -44,6 +44,8 @@ def main():
     ap.add_argument("--config", default=os.path.join(os.path.dirname(__file__), "config", "sites.yaml"))
     ap.add_argument("--mode", choices=["news", "site"], default="news",
                     help="news = list-page crawl (default, weekly); site = full-site structured crawl (manual)")
+    ap.add_argument("--resume", action="store_true",
+                    help="site mode: skip URLs already captured in the checkpoint file")
     ap.add_argument("--limit", type=int, default=0, help="news: max listings; site: max pages (0=config default)")
     ap.add_argument("--no-articles", action="store_true", help="skip fetching article bodies")
     ap.add_argument("--notion", action="store_true", help="push results to Notion (needs env)")
@@ -63,8 +65,15 @@ def main():
             args.client, c,
             max_pages=(args.limit if args.limit else None),
             max_depth=int(c.get("site_max_depth", 3)),
+            resume=args.resume,
         )
         exp = site_crawler.export_site(args.client, result)
+        # rebuild the 8082 dashboard so the new "全站结构" view shows up
+        try:
+            from dashboard import build as dash_build
+            dash_build.main()
+        except Exception as e:  # noqa: BLE001
+            log.warning("dashboard rebuild failed (non-fatal): %s", e)
         print(f"\n=== site: {result['total_pages']} pages, "
               f"{len(result['sections'])} sections ===")
         for sec, items in sorted(result["sections"].items(),
