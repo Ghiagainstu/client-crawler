@@ -7,9 +7,11 @@ weekly-news dashboard). Flask serves on 8082 to avoid the conflict.
 Serves the team on the LAN from a single port:
   GET  /        -> news summary dashboard (dashboard/index.html, built by build.py)
   GET  /add     -> onboarding form (add a new crawler)
-  POST /submit  -> save submission, then push the snapshot to GitHub so the
-                   agent (火哥的绿龙虾) can pick it up, scaffold the parser and
-                   let the weekly crawl pick up the new client.
+  POST /submit  -> save submission, then sync the snapshot to the S: drive queue
+                   (S_DRIVE_ROOT/_crawler_queue) so the agent (火哥的绿龙虾) can
+                   pick it up directly from the LAN share — no GitHub round-trip
+                   for submissions or crawl data. GitHub is kept ONLY for code
+                   distribution (WorkBuddy pushes parsers, the server git pulls).
 
 Replaces the old `python -m http.server` static server: it cannot handle the
 form POST. Deployed by deploy/dashboard.service (venv python). Requires flask
@@ -22,8 +24,8 @@ Run (standalone / dev):
 from __future__ import annotations
 
 import os
-import subprocess
 import sys
+import shutil
 
 HERE = os.path.dirname(os.path.abspath(__file__))             # dashboard/
 ROOT = os.path.dirname(HERE)                                   # repo root
@@ -32,7 +34,6 @@ from flask import Flask, request, render_template_string, send_from_directory
 
 from onboard.app import FORM_HTML, SUCCESS_HTML, save_submission
 
-HERE = os.path.dirname(os.path.abspath(__file__))
 DASHBOARD_HTML = os.path.join(HERE, "index.html")
 
 app = Flask(__name__)
@@ -59,42 +60,43 @@ def submit():
                 "".join(f"<li>{e}</li>" for e in errors) +
                 '</ul><p><a href="/add">返回修改</a></p>'), 400
 
-    pushed = _push_submission(req["client"])
-    note = "（已推送到 GitHub，火哥的绿龙虾会接手）" if pushed else "（本地已保存；推送未成功，请告知火哥）"
+    synced = _sync_submission_to_s(req["client"])
+    note = "（已同步到 S: 盘队列，火哥的绿龙虾会接手）" if synced else "（本地已保存；S: 盘未配置，请告知火哥）"
     return render_template_string(
         SUCCESS_HTML,
         data=__import__("json").dumps(req, ensure_ascii=False, indent=2) + "\n\n" + note,
     )
 
 
-def _push_submission(client: str) -> bool:
-    """Bridge to the agent: force-add the submission snapshot and push to GitHub.
+def _sync_submission_to_s(client: str) -> bool:
+    """Bridge to the agent via the S: drive (no GitHub for data).
 
-    The server already has a github.com push credential (run_weekly.sh uses it
-    for data/). Submissions are low-frequency, so a simple pull-then-push is
-    safe enough. Set CLIENT_CRAWLER_NO_PUSH=1 to disable (dev/testing).
+    Copy the submission snapshot + append to the queue under S_DRIVE_ROOT so the
+    agent (火哥的绿龙虾) can pick it up directly from the LAN share — no GitHub
+    round-trip for submissions or crawl data. GitHub is kept ONLY for code
+    distribution (WorkBuddy pushes parsers, the server git pulls).
     """
-    if os.environ.get("CLIENT_CRAWLER_NO_PUSH"):
-        print("[submit] push disabled by env (CLIENT_CRAWLER_NO_PUSH)")
+    root = os.environ.get("S_DRIVE_ROOT")
+    if not root:
+        print("[submit] S_DRIVE_ROOT not set; submission stays local only")
         return False
     req_file = os.path.join(ROOT, "onboard", "requests", f"{client}.json")
     if not os.path.exists(req_file):
         return False
     try:
-        subprocess.run(["git", "pull", "--ff-only"], cwd=ROOT, check=False,
-                        capture_output=True, timeout=60)
-        subprocess.run(["git", "add", "-f", req_file], cwd=ROOT, check=True,
-                       capture_output=True, timeout=30)
-        subprocess.run(["git", "-c", "user.name=client-crawler",
-                        "-c", "user.email=crawler@local", "commit",
-                        "-m", f"onboard: {client}"], cwd=ROOT, check=False,
-                       capture_output=True, timeout=30)
-        r = subprocess.run(["git", "push"], cwd=ROOT, capture_output=True, timeout=60)
-        ok = r.returncode == 0
-        print(f"[submit] pushed submission {client}: {ok}")
-        return ok
+        qdir = os.path.join(root, "_crawler_queue", "requests")
+        os.makedirs(qdir, exist_ok=True)
+        shutil.copy2(req_file, os.path.join(qdir, f"{client}.json"))
+        qlog = os.path.join(root, "_crawler_queue", "queue.jsonl")
+        with open(req_file, encoding="utf-8") as f:
+            data = f.read().strip()
+        if data:
+            with open(qlog, "a", encoding="utf-8") as f:
+                f.write(data + "\n")
+        print(f"[submit] synced submission {client} to S: drive queue")
+        return True
     except Exception as e:  # noqa: BLE001
-        print(f"[submit] push failed: {e}")
+        print(f"[submit] S: sync failed: {e}")
         return False
 
 

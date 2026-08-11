@@ -10,6 +10,7 @@ data/
 
 # Generated dashboard (built by dashboard/build.py from data/)
 dashboard/index.html
+dashboard/_status.json
 
 # Secrets / local env
 .env

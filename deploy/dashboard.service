@@ -7,6 +7,9 @@ Wants=network-online.target
 Type=simple
 User=__USER__
 WorkingDirectory=__APP_DIR__
+# Optional env file (gitignored). Provides S_DRIVE_ROOT so the /submit handler
+# can sync onboarding submissions to the S: drive queue (no GitHub for data).
+EnvironmentFile=-__APP_DIR__/.env
 # Serve the news dashboard AND the "添加爬虫" onboarding form on :8082 (Flask app).
 # Port 8080 is taken by nginx (pre-existing "AI-Report" dashboard), so Flask uses 8082.
 ExecStart=__APP_DIR__/venv/bin/python dashboard/server.py --port 8082

@@ -5,6 +5,9 @@ The crawler writes data/<client>/<date>.json. This script aggregates all of them
 into a single static dashboard that the Ubuntu box serves over the LAN, so the
 team can browse each client's weekly news with clickable media sources.
 
+It also consumes dashboard/_status.json (written by run_weekly.sh) to show the
+last crawl run time and per-client counts in the header.
+
 Usage:
   python dashboard/build.py
   python dashboard/build.py --data-dir data --out dashboard/index.html
@@ -32,6 +35,17 @@ def load_items(data_dir: str):
         if isinstance(rows, list):
             items.extend(rows)
     return items
+
+
+def _load_status(here: str):
+    sp = os.path.join(here, "_status.json")
+    if os.path.exists(sp):
+        try:
+            with open(sp, encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:  # noqa: BLE001
+            pass
+    return {}
 
 
 def pdate(it):
@@ -141,7 +155,15 @@ function render(){
     </div>`;
   }).join("");
 }
-document.getElementById("sub").textContent = "由 client-crawler 自动生成 · 数据来自各客户官网";
+const st = DB.status || {};
+let sub = "由 client-crawler 自动生成 · 数据来自各客户官网";
+if (st && st.last_run) {
+  const parts = ["上次运行 " + st.last_run];
+  if (st.clients) parts.push("条数 " + Object.entries(st.clients).map(e=>e[0]+" "+e[1]).join(" · "));
+  if (st.empty_clients && st.empty_clients.length) parts.push("⚠️ 0条: " + st.empty_clients.join(","));
+  sub = parts.join(" ｜ ");
+}
+document.getElementById("sub").textContent = sub;
 buildChips(); render();
 </script>
 </body>
@@ -158,7 +180,8 @@ def main():
     items = load_items(args.data_dir)
     items.sort(key=pdate, reverse=True)
     clients = sorted({it.get("client", "") for it in items if it.get("client")})
-    payload = json.dumps({"clients": clients, "items": items}, ensure_ascii=False)
+    status = _load_status(HERE)
+    payload = json.dumps({"clients": clients, "items": items, "status": status}, ensure_ascii=False)
     out = HTML_TEMPLATE.replace("/*__DATA__*/", payload)
 
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
