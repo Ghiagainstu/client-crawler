@@ -68,6 +68,45 @@ def submit():
     )
 
 
+@app.route("/ai-report/")
+@app.route("/ai-report/<client>")
+def ai_report(client: str | None = None):
+    """Entry point for 火哥的绿龙虾 (WorkBuddy) AI analysis reports.
+
+    The green-lobster WorkBuddy automation writes a self-contained HTML report
+    to S_DRIVE_ROOT/<client>/site/<date>_ai_report.html after it analyzes the
+    Friday full-site crawl. This route serves it over the LAN so the 8080
+    AI-Report hub can link here. Date-agnostic: it always shows the latest
+    report for a client.
+
+      GET /ai-report/            -> list clients that have an AI report
+      GET /ai-report/<client>   -> latest AI report HTML for that client
+    """
+    root = os.environ.get("S_DRIVE_ROOT")
+    if not root:
+        return ("AI 报告依赖 S_DRIVE_ROOT（S: 盘）未配置。", 200)
+    if client is None:
+        rows = []
+        for c in sorted(os.listdir(root)):
+            cdir = os.path.join(root, c, "site")
+            if not os.path.isdir(cdir):
+                continue
+            reps = sorted(f for f in os.listdir(cdir) if f.endswith("_ai_report.html"))
+            if reps:
+                rows.append(f'<li><a href="/ai-report/{c}">{c}</a> '
+                            f'（{len(reps)} 份，最新 {reps[-1].replace("_ai_report.html","")}）</li>')
+        if not rows:
+            return ("尚无绿龙虾 AI 分析报告。周一自动化会基于周五全站爬取数据生成。", 200)
+        return ("<h3>绿龙虾·全站 AI 分析报告</h3><ul>" + "".join(rows) + "</ul>", 200)
+    cdir = os.path.join(root, client, "site")
+    if not os.path.isdir(cdir):
+        return (f"客户 {client} 没有 site 数据。", 200)
+    reps = sorted(f for f in os.listdir(cdir) if f.endswith("_ai_report.html"))
+    if not reps:
+        return (f"客户 {client} 暂无 AI 分析报告（周一自动化生成后会出现在这里）。", 200)
+    return send_from_directory(cdir, reps[-1])
+
+
 def _sync_submission_to_s(client: str) -> bool:
     """Bridge to the agent via the S: drive (no GitHub for data).
 
