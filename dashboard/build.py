@@ -247,11 +247,11 @@ setTab("news");
 """
 
 
-def main():
+def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--data-dir", default=os.path.join(HERE, "..", "data"))
     ap.add_argument("--out", default=os.path.join(HERE, "index.html"))
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
     items = load_items(args.data_dir)
     items.sort(key=pdate, reverse=True)

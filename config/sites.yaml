@@ -25,11 +25,17 @@ clients:
     parser: hitachi
     engine: playwright        # Akamai WAF blocks plain requests; use real browser
     browser_channel: chrome   # drive real Chrome (TLS fingerprint passes Akamai)
-    base_url: https://www.hitachi-hightech.com
-    list_url: https://www.hitachi-hightech.com/global/en/news/
+    base_url: https://www.hitachi-hightech.com/global/en/   # site-mode root = EN area
+    list_url: https://www.hitachi-hightech.com/global/en/news/   # news-mode list (legacy)
     media_source: Hitachi High-Tech
     media_source_url: https://www.hitachi-hightech.com/global/en/news/
     fetch_articles: true
     article_delay: 1.5
     limit: 0
-    # English only — user wants global/en news; parser drops other locales
+    # ---- site-mode (full English-site structured crawl) options ----
+    # Crawl the WHOLE English site (/global/en/*), not just /global/en/news/.
+    # Set in sites.yaml as site_path_prefix; site_crawler restricts to this tree.
+    site_path_prefix: /global/en
+    site_max_pages: 300       # hard cap on pages crawled per run
+    site_delay: 0.5           # seconds between page fetches (politeness)
+    site_max_depth: 4         # BFS depth when sitemap is thin

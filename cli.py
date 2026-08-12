@@ -89,7 +89,11 @@ def main():
         # rebuild the 8082 dashboard so the new "全站结构" view shows up
         try:
             from dashboard import build as dash_build
-            dash_build.main()
+            here = os.path.dirname(os.path.abspath(__file__))
+            dash_build.main([
+                "--data-dir", os.path.join(here, "data"),
+                "--out", os.path.join(here, "dashboard", "index.html"),
+            ])
         except Exception as e:  # noqa: BLE001
             log.warning("dashboard rebuild failed (non-fatal): %s", e)
         print(f"\n=== site: {result['total_pages']} pages, "

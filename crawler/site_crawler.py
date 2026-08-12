@@ -33,6 +33,7 @@ import yaml
 from bs4 import BeautifulSoup
 
 from crawler.core import fetch, can_fetch, DEFAULT_HEADERS
+from crawler import browser as browser_mod
 
 log = logging.getLogger("crawler.site")
 
@@ -61,37 +62,65 @@ def _normalize(url: str) -> str:
     return urlunparse(new).rstrip("/")
 
 
-def _is_content_url(url: str, netloc: str) -> bool:
+def _is_content_url(url: str, netloc: str, path_prefix: str | None = None) -> bool:
     if not url:
         return False
     p = urlparse(url)
     if p.netloc != netloc:
+        return False
+    if path_prefix and not p.path.startswith(path_prefix):
+        # scope the crawl to a sub-tree (e.g. the English area /global/en)
         return False
     if p.path.lower().endswith(tuple("." + e for e in _SKIP_EXT)):
         return False
     return True
 
 
-def _discover_sitemap(base_url: str, session=None) -> list[str]:
+def _make_fetch_fn(cfg: dict):
+    """Return a fetch callable matching ``core.fetch``'s signature.
+
+    For Akamai-protected clients (``engine: playwright``) it routes through the
+    real-browser engine; otherwise it falls back to the lightweight ``requests``
+    path so non-WAF clients (sasol) are untouched.
+    """
+    if cfg.get("engine") == "playwright":
+        channel = cfg.get("browser_channel")
+        proxy = os.environ.get("CRAWLER_PROXY")
+        def _browser_fetch(url, *, session=None, delay=0.0,
+                           check_robots=True, timeout=30, **_extra):
+            return browser_mod.fetch(url, proxy=proxy, timeout=timeout,
+                                     wait=3.0, channel=channel)
+        return _browser_fetch
+    return fetch
+
+
+def _discover_sitemap(base_url: str, session=None, fetch_fn=None,
+                      path_prefix: str | None = None) -> list[str]:
     """Return URLs listed in sitemap.xml (handles sitemap index too)."""
+    _fetch = fetch_fn or fetch
     out: list[str] = []
     base = f"{urlparse(base_url).scheme}://{urlparse(base_url).netloc}"
+    # generic root sitemaps always tried; robots-declared ones are scoped to the
+    # crawl prefix so we don't fetch every locale's sitemap (e.g. just /global/en)
     seeds = [base + "/sitemap.xml", base + "/sitemap_index.xml"]
     # robots.txt often declares the real sitemap location via "Sitemap:" lines
     try:
-        robots_txt = fetch(base + "/robots.txt", session=session,
-                           delay=0.1, check_robots=False, timeout=10)
+        robots_txt = _fetch(base + "/robots.txt", session=session,
+                            delay=0.1, check_robots=False, timeout=10)
         for line in robots_txt.splitlines():
             if line.lower().startswith("sitemap:"):
                 sm = line.split(":", 1)[1].strip()
-                if sm:
-                    seeds.insert(0, sm)
+                if not sm:
+                    continue
+                if path_prefix and not urlparse(sm).path.startswith(path_prefix):
+                    continue  # skip other locales' sitemaps
+                seeds.insert(0, sm)
     except Exception as e:  # noqa: BLE001
         log.debug("robots.txt sitemap peek failed: %s", e)
     seen = set()
     for seed in seeds:
         try:
-            xml = fetch(seed, session=session, delay=0.2, check_robots=False)
+            xml = _fetch(seed, session=session, delay=0.2, check_robots=False)
         except Exception as e:  # noqa: BLE001
             log.debug("sitemap fetch failed %s: %s", seed, e)
             continue
@@ -112,7 +141,7 @@ def _discover_sitemap(base_url: str, session=None) -> list[str]:
         nested = []
         for sm in list(out):
             try:
-                x = fetch(sm, session=session, delay=0.2, check_robots=False)
+                x = _fetch(sm, session=session, delay=0.2, check_robots=False)
                 r = ET.fromstring(x.encode("utf-8"))
                 for loc in r.iter():
                     if loc.tag.lower().endswith("loc"):
@@ -127,12 +156,20 @@ def _discover_sitemap(base_url: str, session=None) -> list[str]:
 
 
 def discover_urls(base_url: str, netloc: str, max_pages: int,
-                  max_depth: int = 3, session=None) -> list[str]:
-    """sitemap first, then BFS from base_url to fill the cap."""
+                  max_depth: int = 3, session=None,
+                  path_prefix: str | None = None, fetch_fn=None) -> list[str]:
+    """sitemap first, then BFS from base_url to fill the cap.
+
+    ``path_prefix`` (e.g. ``/global/en``) restricts the crawl to a URL sub-tree
+    so a client can crawl "the English site" rather than the whole domain.
+    ``fetch_fn`` lets Akamai-protected clients route through the browser engine.
+    """
+    _fetch = fetch_fn or fetch
     found = set()
-    for u in _discover_sitemap(base_url, session=session):
+    for u in _discover_sitemap(base_url, session=session, fetch_fn=fetch_fn,
+                               path_prefix=path_prefix):
         n = _normalize(u)
-        if _is_content_url(n, netloc):
+        if _is_content_url(n, netloc, path_prefix):
             found.add(n)
     log.info("sitemap yielded %d content URLs", len(found))
 
@@ -145,7 +182,7 @@ def discover_urls(base_url: str, netloc: str, max_pages: int,
             nxt = []
             for url in frontier:
                 try:
-                    html = fetch(url, session=session, delay=0.3, check_robots=True)
+                    html = _fetch(url, session=session, delay=0.3, check_robots=True)
                 except Exception as e:  # noqa: BLE001
                     log.warning("BFS fetch failed %s: %s", url, e)
                     continue
@@ -156,7 +193,8 @@ def discover_urls(base_url: str, netloc: str, max_pages: int,
                         continue
                     absu = urljoin(url, href)
                     n = _normalize(absu)
-                    if _is_content_url(n, netloc) and n not in visited:
+                    if (_is_content_url(n, netloc, path_prefix)
+                            and n not in visited):
                         visited.add(n)
                         found.add(n)
                         nxt.append(n)
@@ -167,8 +205,17 @@ def discover_urls(base_url: str, netloc: str, max_pages: int,
     return sorted(found)[:max_pages]
 
 
-def classify_section(url: str, aliases: dict | None = None) -> str:
+def classify_section(url: str, aliases: dict | None = None,
+                     path_prefix: str | None = None) -> str:
     parts = [p for p in urlparse(url).path.split("/") if p]
+    if not parts:
+        return "home"
+    # skip the locale/scoping prefix (e.g. global/en) so sections reflect the
+    # real site structure rather than every page collapsing to "global"
+    if path_prefix:
+        pre = [p for p in path_prefix.split("/") if p]
+        if parts[:len(pre)] == pre:
+            parts = parts[len(pre):]
     if not parts:
         return "home"
     seg = parts[0]
@@ -269,6 +316,8 @@ def crawl_site(client: str, cfg: dict, *, max_pages: int | None = None,
     max_pages = max_pages or int(cfg.get("site_max_pages", 500))
     delay = delay or float(cfg.get("site_delay", 0.5))
     aliases = cfg.get("site_sections") or {}
+    path_prefix = cfg.get("site_path_prefix")  # e.g. /global/en -> English-only
+    fetch_fn = _make_fetch_fn(cfg)  # playwright engine for Akamai clients
     cp_path = os.path.join("data", client, "site", ".inprogress.json")
     resume_from = cp_path if resume else None
 
@@ -289,22 +338,28 @@ def crawl_site(client: str, cfg: dict, *, max_pages: int | None = None,
             log.warning("resume load failed: %s", e)
 
     log.info("discovering up to %d pages for %s (%s)", max_pages, client, base)
-    urls = discover_urls(base, netloc, max_pages, max_depth)
+    urls = discover_urls(base, netloc, max_pages, max_depth,
+                         path_prefix=path_prefix, fetch_fn=fetch_fn)
     urls = [u for u in urls if u not in seen_urls]
     log.info("discovered %d new URLs (%d already done)", len(urls), len(seen_urls))
 
+    # Akamai-protected (playwright) clients can't have robots.txt fetched by
+    # urllib — it gets the WAF block page, which RobotFileParser reads as a
+    # blanket "disallow all". For those we skip the urllib robots gate (their
+    # real robots.txt is "User-agent: * Allow: /" anyway).
+    respect_robots = cfg.get("engine") != "playwright"
     done = 0
     for i, url in enumerate(urls, 1):
-        if not can_fetch(url):
+        if respect_robots and not can_fetch(url):
             log.info("robots disallows %s — skip", url)
             continue
         try:
-            html = fetch(url, delay=delay, check_robots=True)
+            html = fetch_fn(url, delay=delay, check_robots=True)
         except Exception as e:  # noqa: BLE001
             log.warning("fetch failed %s: %s", url, e)
             continue
         c = extract_content(html, url)
-        sec = classify_section(url, aliases)
+        sec = classify_section(url, aliases, path_prefix)
         c["section"] = sec
         sections.setdefault(sec, []).append(c)
         pages.append(c)
@@ -345,7 +400,6 @@ def export_site(client: str, result: dict, category: str = "site",
     local_path = os.path.join(local_dir, f"{date_str}.json")
     with open(local_path, "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=2)
-
     # index outline: section -> count + page titles/urls (the "what's here" view)
     index = {
         "client": result["client"],
@@ -360,6 +414,14 @@ def export_site(client: str, result: dict, category: str = "site",
             "pages": [{"title": it["title"], "url": it["url"],
                        "word_count": it["word_count"]} for it in items],
         }
+
+    # persist the index + markdown outline locally too, so the 8082 dashboard
+    # (dashboard/build.py -> load_sites reads data/<client>/site/*_index.json)
+    # can render the 全站结构 tab without depending on the S: mount.
+    with open(os.path.join(local_dir, f"{date_str}_index.json"), "w", encoding="utf-8") as f:
+        json.dump(index, f, ensure_ascii=False, indent=2)
+    with open(os.path.join(local_dir, f"{date_str}_index.md"), "w", encoding="utf-8") as f:
+        f.write(_md_outline(result, index))
 
     root = os.environ.get("S_DRIVE_ROOT")
     if root:
