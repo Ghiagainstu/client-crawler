@@ -23,11 +23,29 @@ import yaml
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from crawler.core import fetch
+from crawler import browser as browser_mod
 from crawler.parsers import get_parser, BASE_URL
 from crawler import pipeline
 from crawler import notion_sync
 from crawler import kb_export
 from crawler import site_crawler
+
+
+def fetch_for(client_cfg: dict, url: str, *, session=None, timeout: int = 30,
+              delay: float = 1.0, check_robots: bool = True) -> str:
+    """Fetch a URL, routing through Playwright when the client needs it.
+
+    Clients protected by a bot/WAF (e.g. Akamai) set ``engine: playwright`` in
+    sites.yaml; everything else stays on the lightweight ``requests`` path so
+    existing clients (sasol) are untouched.
+    """
+    if client_cfg.get("engine") == "playwright":
+        proxy = os.environ.get("CRAWLER_PROXY")  # optional egress proxy on server
+        channel = client_cfg.get("browser_channel")  # e.g. "chrome" for Akamai
+        return browser_mod.fetch(url, proxy=proxy, timeout=timeout, wait=3.0,
+                                 channel=channel)
+    return fetch(url, session=session, timeout=timeout, delay=delay,
+                 check_robots=check_robots)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("cli")
@@ -93,7 +111,7 @@ def main():
     delay = float(c.get("article_delay", 1.0))
 
     log.info("crawling %s from %s", args.client, c["list_url"])
-    list_html = fetch(c["list_url"])
+    list_html = fetch_for(c, c["list_url"])
     raw_items = parser.parse_list(list_html)
     if args.limit:
         raw_items = raw_items[:args.limit]
@@ -102,7 +120,7 @@ def main():
     if fetch_articles and hasattr(parser, "parse_article"):
         for i, it in enumerate(raw_items, 1):
             try:
-                ah = fetch(it["url"])
+                ah = fetch_for(c, it["url"])
                 body = parser.parse_article(ah)
                 it["content"] = body.get("content", "")
                 log.info("[%d/%d] body %d chars: %s", i, len(raw_items),

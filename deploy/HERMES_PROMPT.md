@@ -13,6 +13,10 @@ git clone https://github.com/Ghiagainstu/client-crawler.git /opt/client-crawler
 步骤：
 1. cd /opt/client-crawler
 2. python3 -m venv venv && venv/bin/pip install -r requirements.txt
+   若需爬 Akamai/bot-WAF 保护的站点（如 hitachi-hightech，sites.yaml 标 engine: playwright +
+   browser_channel: chrome），需两步：(1) 下载 patchright 内核 venv/bin/python -m patchright
+   install chromium；(2) 在 Ubuntu 装真实 Chrome 供 channel 驱动：sudo apt-get install -y
+   google-chrome-stable（否则 Akamai 仍按 TLS 指纹拦截 patchright 自带的 chromium）。
 2b. 配置 S: 归档路径（原始数据 + Client Knowledge Base 落盘）：
     cp deploy/.env.example .env
     打开 .env，确认 S_DRIVE_ROOT 指向本机 S: 共享的本地目录

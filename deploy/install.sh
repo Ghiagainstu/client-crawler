@@ -28,6 +28,10 @@ echo "==> Creating venv + installing deps"
 python3 -m venv venv
 ./venv/bin/pip install -U pip -q
 ./venv/bin/pip install -r requirements.txt -q
+# Patchright browser binary — required for Akamai/bot-WAF clients (engine: playwright).
+# For browser_channel: chrome (needed to pass Akamai's TLS fingerprint), also install
+# Google Chrome on the host: sudo apt-get update && sudo apt-get install -y google-chrome-stable
+./venv/bin/python -m patchright install chromium
 
 # Ensure local .env exists (gitignored). Provides S_DRIVE_ROOT for kb_export.
 if [ ! -f "$APP_DIR/.env" ]; then

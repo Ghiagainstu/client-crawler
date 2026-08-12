@@ -19,3 +19,17 @@ clients:
     #   investors: 投资者
     #   sustainability: 可持续
     #   who-we-are: 关于我们
+
+  hitachi-hightech:
+    name: Hitachi High-Tech
+    parser: hitachi
+    engine: playwright        # Akamai WAF blocks plain requests; use real browser
+    browser_channel: chrome   # drive real Chrome (TLS fingerprint passes Akamai)
+    base_url: https://www.hitachi-hightech.com
+    list_url: https://www.hitachi-hightech.com/global/en/news/
+    media_source: Hitachi High-Tech
+    media_source_url: https://www.hitachi-hightech.com/global/en/news/
+    fetch_articles: true
+    article_delay: 1.5
+    limit: 0
+    # English only — user wants global/en news; parser drops other locales

@@ -1,13 +1,16 @@
 """Parser registry. Each parser exposes parse_list(html)->list[RawItem]
 and parse_article(html)->ArticleBody."""
 from . import sasol
+from . import hitachi
 
 REGISTRY = {
     "sasol": sasol,
+    "hitachi": hitachi,
 }
 
 BASE_URL = {
     "sasol": "https://www.sasol.com",
+    "hitachi": "https://www.hitachi-hightech.com",
 }
 
 
