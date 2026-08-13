@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>client-crawler 操作手册</title>
+<style>
+  :root{--brand:#00358e;--brand-2:#0067b9;--gold:#b08d3c;--ink:#1c2733;--muted:#5a6b7b;
+        --line:#e2e8f0;--bg:#f6f8fa;--soft:#eef4ff;--warn:#fff7e6;--warn-line:#f0d9a8;
+        --red:#b3261e;--green:#1e7a46;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Microsoft YaHei","PingFang SC","Segoe UI",sans-serif;line-height:1.8;font-size:15px;}
+  .wrap{max-width:1060px;margin:0 auto;padding:32px 24px 80px;}
+  header.hero{background:linear-gradient(135deg,#0f253f 0%,#1e4979 100%);color:#fff;border-radius:12px;padding:36px 40px;margin-bottom:26px;}
+  header.hero h1{margin:0 0 8px;font-size:26px;letter-spacing:.5px;}
+  header.hero .sub{font-size:14.5px;opacity:.9;}
+  .meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;}
+  .chip{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);padding:3px 11px;border-radius:999px;font-size:12.5px;}
+  nav.toc{background:#fff;border:1px solid var(--line);border-radius:10px;padding:18px 24px;margin-bottom:24px;}
+  nav.toc b{color:var(--brand);}
+  nav.toc ol{margin:8px 0 0;padding-left:22px;}
+  nav.toc li{margin:3px 0;}
+  section{background:#fff;border:1px solid var(--line);border-radius:10px;padding:26px 30px;margin-bottom:24px;}
+  h2{color:var(--brand);font-size:20px;border-bottom:3px solid var(--gold);padding-bottom:8px;margin:0 0 16px;}
+  h3{color:var(--brand-2);font-size:16px;margin:22px 0 8px;}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.5px;}
+  th{background:var(--soft);color:var(--brand);text-align:left;}
+  th,td{border:1px solid var(--line);padding:8px 12px;vertical-align:top;}
+  tr:nth-child(even) td{background:#fafcff;}
+  code{background:#eef2f7;padding:1px 7px;border-radius:5px;font-size:12.5px;color:#0f4c81;}
+  pre{background:#0f253f;color:#e6f0ff;border-radius:8px;padding:14px 18px;overflow-x:auto;font-size:12.5px;line-height:1.7;}
+  pre code{background:none;color:inherit;padding:0;}
+  .warn{background:var(--warn);border-left:4px solid #d99a1e;border-radius:0 8px 8px 0;padding:12px 16px;margin:12px 0;}
+  .ok{background:#e9f6ee;border-left:4px solid var(--green);border-radius:0 8px 8px 0;padding:12px 16px;margin:12px 0;}
+  .tag{display:inline-block;font-size:11.5px;padding:2px 9px;border-radius:999px;margin-right:6px;white-space:nowrap;}
+  .tag.hi{background:#ffe9e7;color:var(--red);border:1px solid #f3b6b0;}
+  .tag.mid{background:var(--warn);color:#8a5b00;border:1px solid var(--warn-line);}
+  .tag.low{background:#e9f6ee;color:var(--green);border:1px solid #b5dcc6;}
+  .flow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:14px 0;}
+  .flow .step{background:var(--soft);border:1px solid #cfe0ff;border-radius:8px;padding:8px 14px;font-size:13.5px;color:var(--brand);}
+  .flow .arrow{color:var(--gold);font-weight:700;}
+  ul,ol{margin:8px 0;padding-left:24px;}
+  li{margin:4px 0;}
+  a{color:var(--brand-2);text-decoration:none;border-bottom:1px dotted var(--brand-2);}
+  a:hover{color:var(--gold);border-bottom-color:var(--gold);}
+  .foot{text-align:center;color:var(--muted);font-size:12.5px;margin-top:20px;}
+  @media(max-width:640px){header.hero{padding:24px;}section{padding:20px;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <h1>client-crawler · 客户爬虫操作手册</h1>
+  <div class="sub">从「提交爬虫任务」到「拿到 AI 报告」的完整流程 —— 谁做什么、数据在哪、怎么排查</div>
+  <div class="meta">
+    <span class="chip">版本：v1.0（2026-08-13）</span>
+    <span class="chip">服务器：Ubuntu 192.168.0.147</span>
+    <span class="chip">看板：:8082 ｜ AI-Report：:8080</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <b>目录</b>
+  <ol>
+    <li><a href="#overview">流程总览</a></li>
+    <li><a href="#submit">一、怎么提交爬虫任务</a></li>
+    <li><a href="#onboard">二、新客户接入（谁负责写爬虫解析器）</a></li>
+    <li><a href="#run">三、爬虫怎么运行、谁运行</a></li>
+    <li><a href="#data">四、爬好的数据在哪、什么格式</a></li>
+    <li><a href="#report">五、谁读数据、怎么出报告</a></li>
+    <li><a href="#ops">六、日常操作命令速查</a></li>
+    <li><a href="#trouble">七、常见问题排查</a></li>
+  </ol>
+</nav>
+
+<section id="overview">
+  <h2>流程总览</h2>
+  <div class="flow">
+    <span class="step">① 8082/add 提交客户</span><span class="arrow">→</span>
+    <span class="step">② 接入（写 parser）</span><span class="arrow">→</span>
+    <span class="step">③ 爬虫运行（定时/手动）</span><span class="arrow">→</span>
+    <span class="step">④ 数据落 S 盘</span><span class="arrow">→</span>
+    <span class="step">⑤ 出 AI 报告</span><span class="arrow">→</span>
+    <span class="step">⑥ 落 S盘/Obsidian/Notion</span>
+  </div>
+  <div class="ok"><strong>一句话：</strong>你在 8082 提交客户 → 服务器爬虫抓数据（定时自动跑）→ 数据存 S 盘 → 绿龙虾（或任何能读文本的 LLM）读数据出三支柱报告。</div>
+  <table>
+    <tr><th>环节</th><th>谁负责</th><th>自动还是手动</th></tr>
+    <tr><td>提交客户</td><td>火哥 / 团队成员</td><td>手动（8082 表单）</td></tr>
+    <tr><td>新客户接入（写 parser + 配置）</td><td>绿龙虾（WorkBuddy）/ 火哥确认</td><td>手动（一次性）</td></tr>
+    <tr><td>爬虫运行</td><td>服务器 systemd 定时器</td><td>自动（+ 手动可触发）</td></tr>
+    <tr><td>全站爬取（site 模式）</td><td>手动触发</td><td>手动（目前无定时）</td></tr>
+    <tr><td>数据存储</td><td>服务器本地 + S 盘共享</td><td>自动</td></tr>
+    <tr><td>出 AI 报告</td><td>绿龙虾（spider-report skill）</td><td>手动（爬完触发）</td></tr>
+    <tr><td>报告落盘</td><td>绿龙虾</td><td>S盘/Notion 自动，Obsidian 本地</td></tr>
+  </table>
+</section>
+
+<section id="submit">
+  <h2>一、怎么提交爬虫任务</h2>
+  <h3>1. 打开提交表单</h3>
+  <p>浏览器访问 <a href="http://192.168.0.147:8082/add">http://192.168.0.147:8082/add</a>（「客户站点看板」右上角也有「＋ 添加爬虫」按钮）。</p>
+  <table>
+    <tr><th>表单字段</th><th>填写说明</th></tr>
+    <tr><td>客户名 / key</td><td>英文标识，用作目录名，如 <code>hitachi-hightech</code>（用连字符，别带空格）</td></tr>
+    <tr><td>站点 URL</td><td>要爬的根地址。news 模式填新闻列表页；全站爬填英语区根，如 <code>https://www.hitachi-hightech.com/global/en/</code></td></tr>
+    <tr><td>备注</td><td>说明语言/范围（如「只要英语区」）、特殊要求（如 Akamai 防护需真实 Chrome）</td></tr>
+  </table>
+  <h3>2. 提交后发生了什么</h3>
+  <ul>
+    <li>服务器把提交存到 <code>onboard/requests/&lt;client&gt;.json</code>，并同步一份到 S 盘队列 <code>S:\_crawler_queue\requests\&lt;client&gt;.json</code> + <code>queue.jsonl</code>。</li>
+    <li>系统每晚定时器会检查队列，但<strong>只对「已接入」的客户自动爬</strong>。新客户需先接入（见下一节）。</li>
+  </ul>
+</section>
+
+<section id="onboard">
+  <h2>二、新客户接入（谁负责写爬虫解析器）</h2>
+  <div class="warn"><strong>关键区分：</strong>「提交」≠「接入」。提交只是把客户信息放进队列；要真正能爬，需要 ① 写一个页面解析器（parser）② 在 <code>config/sites.yaml</code> 注册 ③（若站点有 WAF）配好浏览器引擎。这一步是<strong>写代码</strong>，由<strong>绿龙虾（WorkBuddy）</strong>完成，火哥确认后生效。</div>
+  <h3>接入要做的事</h3>
+  <ol>
+    <li>绿龙虾读取队列里的提交信息（S 盘 <code>_crawler_queue</code>）。</li>
+    <li>写 parser：<code>crawler/parsers/&lt;client&gt;.py</code>（解析列表页/正文）。</li>
+    <li>注册配置：<code>config/sites.yaml</code> 加客户段（base_url、list_url、parser、engine、site_priority 等）。</li>
+    <li>推代码 → 服务器 <code>git pull</code>。</li>
+    <li>Akamai/WAF 站点：需 <code>engine: playwright</code> + <code>browser_channel: chrome</code>，服务器已装 <code>google-chrome-stable</code>。</li>
+  </ol>
+  <div class="ok"><strong>已验证先例：</strong>hitachi-hightech 接入流程完整跑通 —— patchright + 真实 Chrome 绕过 Akamai，全站 360 页（含产品页）抓取成功，8082「全站结构」tab 显示。</div>
+</section>
+
+<section id="run">
+  <h2>三、爬虫怎么运行、谁运行</h2>
+  <h3>运行主体</h3>
+  <p>爬虫跑在 <strong>Ubuntu 服务器 192.168.0.147</strong>（项目目录 <code>/opt/client-crawler</code>，虚拟环境 <code>venv</code>）。由 <strong>systemd 定时器</strong>自动触发，也可手动触发。</p>
+  <h3>自动定时器（当前生效配置）</h3>
+  <table>
+    <tr><th>定时器</th><th>时间</th><th>做什么</th></tr>
+    <tr><td>client-crawler.timer</td><td>每月 1 日 09:00</td><td>全量爬所有已配置客户（news 模式，run_weekly.sh）→ 重建看板 → 写运行状态</td></tr>
+    <tr><td>crawler-check.timer</td><td>周一 / 三 / 五 19:00</td><td>检查 S 盘提交队列 → 对「已接入」且有新提交的客户爬一次 → 重建看板（纯代码，不调 AI）</td></tr>
+  </table>
+  <h3>全站爬取（site 模式）—— 手动触发</h3>
+  <p>全站结构化爬取目前<strong>没有定时器</strong>，需要时手动跑（约 300-400 页浏览器抓取，耗时约 1 小时）：</p>
+  <pre><code>ssh theeggsh@192.168.0.147
+cd /opt/client-crawler &amp;&amp; source venv/bin/activate
+S_DRIVE_ROOT=/media/theeggsh/SSD-2/AI-Report python cli.py --client &lt;key&gt; --mode site</code></pre>
+  <p>后台跑（不占终端）：</p>
+  <pre><code>nohup python cli.py --client &lt;key&gt; --mode site &gt; /tmp/site_&lt;key&gt;.log 2>&amp;1 &amp;
+tail -f /tmp/site_&lt;key&gt;.log</code></pre>
+  <h3>手动跑新闻（news）模式</h3>
+  <pre><code>cd /opt/client-crawler &amp;&amp; source venv/bin/activate
+python cli.py --client &lt;key&gt;        # 默认 news 模式</code></pre>
+  <div class="warn"><strong>注意：</strong>site 模式结束时会自动重建看板；news 模式由定时器跑完统一重建。服务器需要 <code>S_DRIVE_ROOT</code>（在 <code>.env</code> 已配）才能把数据同步到 S 盘。</div>
+</section>
+
+<section id="data">
+  <h2>四、爬好的数据在哪、什么格式</h2>
+  <h3>数据位置（两处，内容一致）</h3>
+  <table>
+    <tr><th>位置</th><th>路径</th><th>谁能访问</th></tr>
+    <tr><td>服务器本地</td><td><code>/opt/client-crawler/data/&lt;client&gt;/site/</code>（全站）或 <code>data/&lt;client&gt;/&lt;日期&gt;.json</code>（新闻）</td><td>服务器 / SSH</td></tr>
+    <tr><td><strong>S 盘共享</strong>（推荐访问）</td><td><code>\\192.168.0.147\AI-Report\&lt;client&gt;\site\</code></td><td>局域网所有电脑、Obsidian、绿龙虾</td></tr>
+    <tr><td>看板</td><td><code>http://192.168.0.147:8082/</code>（全站结构 / 每周新闻）</td><td>团队浏览器</td></tr>
+  </table>
+  <h3>每个客户 site 目录下的文件</h3>
+  <table>
+    <tr><th>文件</th><th>格式</th><th>内容</th></tr>
+    <tr><td><code>&lt;日期&gt;.json</code></td><td>JSON（原始全文）</td><td><code>{client, base_url, crawled_at, total_pages, sections:{板块:[{url,title,meta_description,text,word_count,section}]}}</code></td></tr>
+    <tr><td><code>&lt;日期&gt;_index.json</code></td><td>JSON（大纲）</td><td>板块 → 页数 + 每页 title/url/word_count</td></tr>
+    <tr><td><code>&lt;日期&gt;_index.md</code></td><td>Markdown</td><td>人读板块大纲</td></tr>
+    <tr><td><code>&lt;日期&gt;_ai_report.html / .md</code></td><td>HTML / Markdown</td><td>绿龙虾生成的三支柱 AI 报告</td></tr>
+  </table>
+  <p>所有文件都是 <strong>UTF-8 明文</strong>，任何能读文本的工具（Excel、编辑器、LLM）都能打开。JSON 的 <code>text</code> 字段就是页面正文，<code>url</code> 是来源。</p>
+</section>
+
+<section id="report">
+  <h2>五、谁读数据、怎么出报告</h2>
+  <h3>1. 绿龙虾（推荐，WorkBuddy 内置）</h3>
+  <p>绿龙虾的 <strong>spider-report</strong> skill 把 S 盘 site 数据转成三支柱报告：<strong>公司介绍 / 网站产品 / 对 Paid Search 的作用与意义</strong>，每条事实带来源 URL，结尾附可执行清单（火哥决策 / KB 增补 / Agent 派发 / 循环回写）。</p>
+  <p><strong>触发方式（手动）：</strong>对绿龙虾说「出报告」+ 客户名（如 <code>hitachi-hightech</code>）。报告落三处：</p>
+  <ul>
+    <li>S 盘：<code>\\192.168.0.147\AI-Report\&lt;client&gt;\site\&lt;client&gt;-spider-report-&lt;日期&gt;.html</code></li>
+    <li>本地 Obsidian vault：<code>D:\WorkBuddy\Obsidian\&lt;客户文件夹&gt;\</code></li>
+    <li>Notion：Spider Reports 数据库（按客户+日期幂等更新）</li>
+  </ul>
+  <h3>2. 网页版 LLM（备用）</h3>
+  <p>云端网页 LLM <strong>访问不到你的局域网</strong>，但它能读文本文件。路径：把 <code>&lt;日期&gt;.json</code> 或 <code>_index.md</code> <strong>上传</strong>给网页版 LLM（ChatGPT / Kimi / DeepSeek 等），附三支柱提示词即可复现报告。数据就是标准 JSON + Markdown，任何能读文本的 LLM 都能消费。</p>
+  <h3>3. 在 8082 看报告</h3>
+  <p>「🗂️ 全站结构」tab 里每个客户卡片有 <strong>📄 AI 报告 ↗</strong>，点击直达最新报告（<code>/ai-report/&lt;client&gt;</code>）。</p>
+</section>
+
+<section id="ops">
+  <h2>六、日常操作命令速查</h2>
+  <table>
+    <tr><th>想做什么</th><th>命令 / 操作</th></tr>
+    <tr><td>看爬取日志</td><td><code>ssh theeggsh@192.168.0.147 "tail -f /tmp/site_&lt;key&gt;.log"</code></td></tr>
+    <tr><td>手动全站爬</td><td>见第三节（site 模式）</td></tr>
+    <tr><td>手动新闻爬</td><td><code>cd /opt/client-crawler &amp;&amp; source venv/bin/activate &amp;&amp; python cli.py --client &lt;key&gt;</code></td></tr>
+    <tr><td>重建看板</td><td><code>ssh theeggsh@192.168.0.147 "cd /opt/client-crawler &amp;&amp; source venv/bin/activate &amp;&amp; python dashboard/build.py"</code></td></tr>
+    <tr><td>重启 8082 服务</td><td><code>ssh theeggsh@192.168.0.147 "sudo systemctl restart dashboard"</code>（已配免密）</td></tr>
+    <tr><td>看定时器状态</td><td><code>ssh theeggsh@192.168.0.147 "systemctl list-timers --no-pager | grep -E 'crawler|client'"</code></td></tr>
+    <tr><td>同步最新代码到服务器</td><td>绿龙虾 push 后：<code>ssh theeggsh@192.168.0.147 "cd /opt/client-crawler &amp;&amp; git pull"</code>（服务器有本地改动时用 stash→pull→stash pop）</td></tr>
+    <tr><td>查看数据文件</td><td>资源管理器进 <code>\\192.168.0.147\AI-Report\&lt;client&gt;\site\</code></td></tr>
+  </table>
+</section>
+
+<section id="trouble">
+  <h2>七、常见问题排查</h2>
+  <table>
+    <tr><th>现象</th><th>原因 / 处理</th></tr>
+    <tr><td>8082 没有某个客户</td><td>看是不是在「🗂️ 全站结构」tab（site 数据在这，不在新闻 tab）；浏览器缓存就 Ctrl+Shift+R 强刷</td></tr>
+    <tr><td>爬取大量 403 / 0 条</td><td>站点有 WAF（Akamai 等）→ 需 <code>engine: playwright</code> + <code>browser_channel: chrome</code>，服务器必须装了 <code>google-chrome-stable</code></td></tr>
+    <tr><td>报 <code>chrome executable doesn't exist</code></td><td>服务器没装真实 Chrome：<code>sudo apt-get install -y google-chrome-stable</code></td></tr>
+    <tr><td>数据没同步到 S 盘</td><td>服务器 <code>S_DRIVE_ROOT</code> 未配（.env）或共享挂载只读</td></tr>
+    <tr><td>看板显示旧数据</td><td>看板在爬取结束才重建；手动跑 <code>python dashboard/build.py</code> 立即刷新</td></tr>
+    <tr><td>定时器没跑</td><td><code>systemctl status client-crawler.timer crawler-check.timer</code> 看是否 active</td></tr>
+    <tr><td>产品页没抓到</td><td>site 模式加了 <code>site_priority</code>（products/knowledge 优先）；若仍缺，调大 <code>site_max_pages</code></td></tr>
+  </table>
+</section>
+
+<div class="foot">
+  — client-crawler 操作手册 v1.0 · 由「火哥的绿龙虾」编写 · 服务器 192.168.0.147 · 看板 :8082 / AI-Report :8080 —
+</div>
+
+</div>
+</body>
+</html>

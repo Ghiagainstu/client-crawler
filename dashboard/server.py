@@ -47,6 +47,15 @@ def dashboard():
     return send_from_directory(HERE, "index.html")
 
 
+@app.route("/manual")
+def manual():
+    """Operations manual (dashboard/manual.html)."""
+    manual_html = os.path.join(HERE, "manual.html")
+    if not os.path.exists(manual_html):
+        return ("操作手册尚未生成。", 200)
+    return send_from_directory(HERE, "manual.html")
+
+
 @app.route("/add")
 def add():
     return render_template_string(FORM_HTML)

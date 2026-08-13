@@ -136,6 +136,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <header><div class="wrap">
   <h1>客户站点看板</h1>
   <a class="addbtn" href="/add">＋ 添加爬虫</a>
+  <a class="addbtn alt" href="/manual" target="_blank" rel="noopener">📖 操作手册</a>
   <a class="addbtn alt" href="http://192.168.0.147:8080/" target="_blank" rel="noopener">AI-Report 看板 ↗</a>
   <div class="sub" id="sub">加载中…</div>
   <div class="controls">
