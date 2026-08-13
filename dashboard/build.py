@@ -134,7 +134,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 </head>
 <body>
 <header><div class="wrap">
-  <h1>客户每周新闻汇总</h1>
+  <h1>客户站点看板</h1>
   <a class="addbtn" href="/add">＋ 添加爬虫</a>
   <a class="addbtn alt" href="http://192.168.0.147:8080/" target="_blank" rel="noopener">AI-Report 看板 ↗</a>
   <div class="sub" id="sub">加载中…</div>
@@ -143,8 +143,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <input class="search" id="q" placeholder="搜索标题 / 摘要 / 客户…" oninput="render()">
   </div>
   <div class="tabs">
-    <span class="chip active" id="tab-news" onclick="setTab('news')">📰 每周新闻</span>
-    <span class="chip" id="tab-site" onclick="setTab('site')">🗂️ 全站结构</span>
+    <span class="chip active" id="tab-site" onclick="setTab('site')">🗂️ 全站结构</span>
+    <span class="chip" id="tab-news" onclick="setTab('news')">📰 每周新闻</span>
   </div>
 </div></header>
 <main class="wrap">
@@ -204,7 +204,7 @@ if (st && st.last_run) {
 document.getElementById("sub").textContent = sub;
 buildChips(); render();
 
-let activeTab = "news";
+let activeTab = "site";
 function setTab(t){
   activeTab = t;
   document.getElementById("tab-news").classList.toggle("active", t==="news");
@@ -240,7 +240,7 @@ function renderSites(){
     </div>`;
   }).join("");
 }
-setTab("news");
+setTab("site");
 </script>
 </body>
 </html>
