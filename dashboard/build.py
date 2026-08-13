@@ -230,6 +230,7 @@ function renderSites(){
       <div class="site-head">
         <span class="badge">${esc(s.client)}</span>
         <a class="site-root" href="${esc(s.base_url||'#')}" target="_blank" rel="noopener">${esc(s.base_url||"")}</a>
+        <a class="site-root" href="/ai-report/${esc(s.client)}" target="_blank" rel="noopener">📄 AI 报告 ↗</a>
         <span class="date">${s.total_pages} 页 · ${esc((s.crawled_at||"").slice(0,10))}</span>
       </div>
       ${secs.map(([name,info])=>`
