@@ -157,12 +157,17 @@ def _discover_sitemap(base_url: str, session=None, fetch_fn=None,
 
 def discover_urls(base_url: str, netloc: str, max_pages: int,
                   max_depth: int = 3, session=None,
-                  path_prefix: str | None = None, fetch_fn=None) -> list[str]:
+                  path_prefix: str | None = None, fetch_fn=None,
+                  priority: list | None = None) -> list[str]:
     """sitemap first, then BFS from base_url to fill the cap.
 
     ``path_prefix`` (e.g. ``/global/en``) restricts the crawl to a URL sub-tree
     so a client can crawl "the English site" rather than the whole domain.
     ``fetch_fn`` lets Akamai-protected clients route through the browser engine.
+    ``priority`` is an optional list of first-path-segments to surface first
+    (e.g. ["products", "knowledge"]) so high-value sections aren't starved by
+    the alphabetical cap — otherwise a 300-page cap on a big site can miss the
+    whole product area.
     """
     _fetch = fetch_fn or fetch
     found = set()
@@ -202,7 +207,22 @@ def discover_urls(base_url: str, netloc: str, max_pages: int,
                             break
             frontier = nxt
             depth += 1
-    return sorted(found)[:max_pages]
+    if not priority:
+        return sorted(found)[:max_pages]
+    # surface priority sections first (stable within each), then the rest
+    def _path_seg(u: str) -> str:
+        parts = [p for p in urlparse(u).path.split("/") if p]
+        if path_prefix:
+            pre = [p for p in path_prefix.split("/") if p]
+            if parts[:len(pre)] == pre:
+                parts = parts[len(pre):]
+        return parts[0] if parts else ""
+    def _sort_key(u: str):
+        seg = _path_seg(u)
+        if seg in priority:
+            return (0, priority.index(seg), u)
+        return (1, 0, u)
+    return sorted(found, key=_sort_key)[:max_pages]
 
 
 def classify_section(url: str, aliases: dict | None = None,
@@ -317,6 +337,7 @@ def crawl_site(client: str, cfg: dict, *, max_pages: int | None = None,
     delay = delay or float(cfg.get("site_delay", 0.5))
     aliases = cfg.get("site_sections") or {}
     path_prefix = cfg.get("site_path_prefix")  # e.g. /global/en -> English-only
+    priority = cfg.get("site_priority")  # e.g. ["products", "knowledge"] first
     fetch_fn = _make_fetch_fn(cfg)  # playwright engine for Akamai clients
     cp_path = os.path.join("data", client, "site", ".inprogress.json")
     resume_from = cp_path if resume else None
@@ -339,7 +360,8 @@ def crawl_site(client: str, cfg: dict, *, max_pages: int | None = None,
 
     log.info("discovering up to %d pages for %s (%s)", max_pages, client, base)
     urls = discover_urls(base, netloc, max_pages, max_depth,
-                         path_prefix=path_prefix, fetch_fn=fetch_fn)
+                         path_prefix=path_prefix, fetch_fn=fetch_fn,
+                         priority=priority)
     urls = [u for u in urls if u not in seen_urls]
     log.info("discovered %d new URLs (%d already done)", len(urls), len(seen_urls))
 

@@ -36,6 +36,13 @@ clients:
     # Crawl the WHOLE English site (/global/en/*), not just /global/en/news/.
     # Set in sites.yaml as site_path_prefix; site_crawler restricts to this tree.
     site_path_prefix: /global/en
-    site_max_pages: 300       # hard cap on pages crawled per run
+    site_max_pages: 360       # hard cap: products + knowledge + company all fit
     site_delay: 0.5           # seconds between page fetches (politeness)
     site_max_depth: 4         # BFS depth when sitemap is thin
+    # Surface high-value sections FIRST so the cap never starves them out:
+    # alphabetical ordering put /products/ beyond the first 300 URLs and the
+    # whole product area was missing from the crawl.
+    site_priority:
+      - products
+      - knowledge
+      - company
