@@ -55,7 +55,7 @@
   <div class="sub">从「提交爬虫任务」到「拿到 AI 报告」的完整流程 —— 谁做什么、数据在哪、怎么排查</div>
   <div class="meta">
     <span class="chip">版本：v1.0（2026-08-13）</span>
-    <span class="chip">服务器：Ubuntu 192.168.0.147</span>
+    <span class="chip">服务器：Ubuntu 192.168.0.181</span>
     <span class="chip">看板：:8082 ｜ AI-Report：:8080</span>
   </div>
 </header>
@@ -100,7 +100,7 @@
 <section id="submit">
   <h2>一、怎么提交爬虫任务</h2>
   <h3>1. 打开提交表单</h3>
-  <p>浏览器访问 <a href="http://192.168.0.147:8082/add">http://192.168.0.147:8082/add</a>（「客户站点看板」右上角也有「＋ 添加爬虫」按钮）。</p>
+  <p>浏览器访问 <a href="http://192.168.0.181:8082/add">http://192.168.0.181:8082/add</a>（「客户站点看板」右上角也有「＋ 添加爬虫」按钮）。</p>
   <table>
     <tr><th>表单字段</th><th>填写说明</th></tr>
     <tr><td>客户名 / key</td><td>英文标识，用作目录名，如 <code>hitachi-hightech</code>（用连字符，别带空格）</td></tr>
@@ -131,7 +131,7 @@
 <section id="run">
   <h2>三、爬虫怎么运行、谁运行</h2>
   <h3>运行主体</h3>
-  <p>爬虫跑在 <strong>Ubuntu 服务器 192.168.0.147</strong>（项目目录 <code>/opt/client-crawler</code>，虚拟环境 <code>venv</code>）。由 <strong>systemd 定时器</strong>自动触发，也可手动触发。</p>
+  <p>爬虫跑在 <strong>Ubuntu 服务器 192.168.0.181</strong>（项目目录 <code>/opt/client-crawler</code>，虚拟环境 <code>venv</code>）。由 <strong>systemd 定时器</strong>自动触发，也可手动触发。</p>
   <h3>自动定时器（当前生效配置）</h3>
   <table>
     <tr><th>定时器</th><th>时间</th><th>做什么</th></tr>
@@ -140,7 +140,7 @@
   </table>
   <h3>全站爬取（site 模式）—— 手动触发</h3>
   <p>全站结构化爬取目前<strong>没有定时器</strong>，需要时手动跑（约 300-400 页浏览器抓取，耗时约 1 小时）：</p>
-  <pre><code>ssh theeggsh@192.168.0.147
+  <pre><code>ssh theeggsh@192.168.0.181
 cd /opt/client-crawler &amp;&amp; source venv/bin/activate
 S_DRIVE_ROOT=/media/theeggsh/SSD-2/AI-Report python cli.py --client &lt;key&gt; --mode site</code></pre>
   <p>后台跑（不占终端）：</p>
@@ -158,8 +158,8 @@ python cli.py --client &lt;key&gt;        # 默认 news 模式</code></pre>
   <table>
     <tr><th>位置</th><th>路径</th><th>谁能访问</th></tr>
     <tr><td>服务器本地</td><td><code>/opt/client-crawler/data/&lt;client&gt;/site/</code>（全站）或 <code>data/&lt;client&gt;/&lt;日期&gt;.json</code>（新闻）</td><td>服务器 / SSH</td></tr>
-    <tr><td><strong>S 盘共享</strong>（推荐访问）</td><td><code>\\192.168.0.147\AI-Report\&lt;client&gt;\site\</code></td><td>局域网所有电脑、Obsidian、绿龙虾</td></tr>
-    <tr><td>看板</td><td><code>http://192.168.0.147:8082/</code>（全站结构 / 每周新闻）</td><td>团队浏览器</td></tr>
+    <tr><td><strong>S 盘共享</strong>（推荐访问）</td><td><code>\\192.168.0.181\AI-Report\&lt;client&gt;\site\</code></td><td>局域网所有电脑、Obsidian、绿龙虾</td></tr>
+    <tr><td>看板</td><td><code>http://192.168.0.181:8082/</code>（全站结构 / 每周新闻）</td><td>团队浏览器</td></tr>
   </table>
   <h3>每个客户 site 目录下的文件</h3>
   <table>
@@ -178,7 +178,7 @@ python cli.py --client &lt;key&gt;        # 默认 news 模式</code></pre>
   <p>绿龙虾的 <strong>spider-report</strong> skill 把 S 盘 site 数据转成三支柱报告：<strong>公司介绍 / 网站产品 / 对 Paid Search 的作用与意义</strong>，每条事实带来源 URL，结尾附可执行清单（火哥决策 / KB 增补 / Agent 派发 / 循环回写）。</p>
   <p><strong>触发方式（手动）：</strong>对绿龙虾说「出报告」+ 客户名（如 <code>hitachi-hightech</code>）。报告落三处：</p>
   <ul>
-    <li>S 盘：<code>\\192.168.0.147\AI-Report\&lt;client&gt;\site\&lt;client&gt;-spider-report-&lt;日期&gt;.html</code></li>
+    <li>S 盘：<code>\\192.168.0.181\AI-Report\&lt;client&gt;\site\&lt;client&gt;-spider-report-&lt;日期&gt;.html</code></li>
     <li>本地 Obsidian vault：<code>D:\WorkBuddy\Obsidian\&lt;客户文件夹&gt;\</code></li>
     <li>Notion：Spider Reports 数据库（按客户+日期幂等更新）</li>
   </ul>
@@ -192,14 +192,14 @@ python cli.py --client &lt;key&gt;        # 默认 news 模式</code></pre>
   <h2>六、日常操作命令速查</h2>
   <table>
     <tr><th>想做什么</th><th>命令 / 操作</th></tr>
-    <tr><td>看爬取日志</td><td><code>ssh theeggsh@192.168.0.147 "tail -f /tmp/site_&lt;key&gt;.log"</code></td></tr>
+    <tr><td>看爬取日志</td><td><code>ssh theeggsh@192.168.0.181 "tail -f /tmp/site_&lt;key&gt;.log"</code></td></tr>
     <tr><td>手动全站爬</td><td>见第三节（site 模式）</td></tr>
     <tr><td>手动新闻爬</td><td><code>cd /opt/client-crawler &amp;&amp; source venv/bin/activate &amp;&amp; python cli.py --client &lt;key&gt;</code></td></tr>
-    <tr><td>重建看板</td><td><code>ssh theeggsh@192.168.0.147 "cd /opt/client-crawler &amp;&amp; source venv/bin/activate &amp;&amp; python dashboard/build.py"</code></td></tr>
-    <tr><td>重启 8082 服务</td><td><code>ssh theeggsh@192.168.0.147 "sudo systemctl restart dashboard"</code>（已配免密）</td></tr>
-    <tr><td>看定时器状态</td><td><code>ssh theeggsh@192.168.0.147 "systemctl list-timers --no-pager | grep -E 'crawler|client'"</code></td></tr>
-    <tr><td>同步最新代码到服务器</td><td>绿龙虾 push 后：<code>ssh theeggsh@192.168.0.147 "cd /opt/client-crawler &amp;&amp; git pull"</code>（服务器有本地改动时用 stash→pull→stash pop）</td></tr>
-    <tr><td>查看数据文件</td><td>资源管理器进 <code>\\192.168.0.147\AI-Report\&lt;client&gt;\site\</code></td></tr>
+    <tr><td>重建看板</td><td><code>ssh theeggsh@192.168.0.181 "cd /opt/client-crawler &amp;&amp; source venv/bin/activate &amp;&amp; python dashboard/build.py"</code></td></tr>
+    <tr><td>重启 8082 服务</td><td><code>ssh theeggsh@192.168.0.181 "sudo systemctl restart dashboard"</code>（已配免密）</td></tr>
+    <tr><td>看定时器状态</td><td><code>ssh theeggsh@192.168.0.181 "systemctl list-timers --no-pager | grep -E 'crawler|client'"</code></td></tr>
+    <tr><td>同步最新代码到服务器</td><td>绿龙虾 push 后：<code>ssh theeggsh@192.168.0.181 "cd /opt/client-crawler &amp;&amp; git pull"</code>（服务器有本地改动时用 stash→pull→stash pop）</td></tr>
+    <tr><td>查看数据文件</td><td>资源管理器进 <code>\\192.168.0.181\AI-Report\&lt;client&gt;\site\</code></td></tr>
   </table>
 </section>
 
@@ -218,7 +218,7 @@ python cli.py --client &lt;key&gt;        # 默认 news 模式</code></pre>
 </section>
 
 <div class="foot">
-  — client-crawler 操作手册 v1.0 · 由「火哥的绿龙虾」编写 · 服务器 192.168.0.147 · 看板 :8082 / AI-Report :8080 —
+  — client-crawler 操作手册 v1.0 · 由「火哥的绿龙虾」编写 · 服务器 192.168.0.181 · 看板 :8082 / AI-Report :8080 —
 </div>
 
 </div>

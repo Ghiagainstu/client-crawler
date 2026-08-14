@@ -1,9 +1,9 @@
 # Hermes 部署 Prompt（client-crawler）
 
-> 复制下面整段，发给运行在 `192.168.0.147` 上的 hermes agent 即可。
+> 复制下面整段，发给运行在 `192.168.0.181` 上的 hermes agent 即可。
 
 ```
-角色：你是部署 agent，运行在 Ubuntu 主机 192.168.0.147。
+角色：你是部署 agent，运行在 Ubuntu 主机 192.168.0.181。
 任务：一次性部署 client-crawler 新闻爬虫并配置每周定时任务。部署后由系统定时器自动运行，无需 AI 常驻。
 
 代码来源：
@@ -36,7 +36,7 @@ git clone https://github.com/Ghiagainstu/client-crawler.git /opt/client-crawler
      去重，agent 改了录入才重爬）；未接入的客户跳过，留给 agent。爬完重建看板 + 状态。
    - dashboard.service：在 0.0.0.0:8082 跑 dashboard/server.py（Flask）；并读取 .env 里的
      S_DRIVE_ROOT，使 /submit 录入能同步到 S: 盘队列。团队访问
-     http://192.168.0.147:8082 看新闻汇总；页头「＋ 添加爬虫」→ /add 填表加新客户；
+     http://192.168.0.181:8082 看新闻汇总；页头「＋ 添加爬虫」→ /add 填表加新客户；
      另有「🗂️ 全站结构」标签页（全站爬后自动出现）与 `/ai-report/` 路由（绿龙虾 AI 报告）。
      注意：端口 8080 已被 nginx 占用（之前部署的 "AI-Report" 客户每周新闻情报看板，
      静态服务），故 Flask 改用 8082，不要改回 8080（会 Address already in use 启动失败）。

@@ -101,7 +101,7 @@ Notion MCP 仅连接在 WorkBuddy（本机），不在 Ubuntu 服务器，因此
 - 已配置 WorkBuddy 自动化「client-crawler Notion sync」（每周一 10:00）自动执行上述同步。
 - 旧版 `crawler/notion_sync.py`（读 `NOTION_TOKEN` 环境变量）保留作离线兜底，默认不走它。
 
-## 部署到 Ubuntu 192.168.0.147（hermes agent）
+## 部署到 Ubuntu 192.168.0.181（hermes agent）
 代码已推到 GitHub 私有仓 `https://github.com/Ghiagainstu/client-crawler`。
 给 hermes 的部署 prompt 见 `deploy/HERMES_PROMPT.md`（复制整段发给 hermes 即可）。
 
