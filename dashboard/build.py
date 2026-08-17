@@ -130,6 +130,12 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   .page-list li a:hover{color:var(--accent);text-decoration:underline}
   .wc{color:var(--muted);font-size:12px;white-space:nowrap}
   code{background:var(--accent-soft);padding:1px 6px;border-radius:5px;font-size:12px}
+  .schedule{display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)}
+  .s-item{display:flex;flex-direction:column;gap:2px}
+  .s-label{font-size:11px;letter-spacing:.04em;color:#9aa3af;text-transform:uppercase}
+  .s-val{font-weight:600;color:var(--ink);font-size:13px}
+  .s-val.accent{color:var(--accent)}
+  .s-sub{font-size:12px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -137,7 +143,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <h1>客户站点看板</h1>
   <a class="addbtn" href="/add">＋ 添加爬虫</a>
   <a class="addbtn alt" href="/manual" target="_blank" rel="noopener">📖 操作手册</a>
-  <a class="addbtn alt" href="http://192.168.0.181:8080/" target="_blank" rel="noopener">AI-Report 看板 ↗</a>
+  <a class="addbtn alt" href="http://192.168.0.220:8080/" target="_blank" rel="noopener">AI-Report 看板 ↗</a>
   <div class="sub" id="sub">加载中…</div>
   <div class="controls">
     <div class="chips" id="chips"></div>
@@ -147,6 +153,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <span class="chip active" id="tab-site" onclick="setTab('site')">🗂️ 全站结构</span>
     <span class="chip" id="tab-news" onclick="setTab('news')">📰 每周新闻</span>
   </div>
+  <div class="schedule" id="schedule"></div>
 </div></header>
 <main class="wrap">
   <div id="view-news">
@@ -205,6 +212,35 @@ if (st && st.last_run) {
 document.getElementById("sub").textContent = sub;
 buildChips(); render();
 
+const SCHED = DB.schedule || {};
+function nextMonthly(day, hour){
+  // 下次触发：每月 day 日 hour:00（与服务器 systemd 定时器一致，按浏览器本地时区估算）
+  const now = new Date();
+  let y = now.getFullYear(), m = now.getMonth();
+  let cand = new Date(y, m, day, hour, 0, 0);
+  if (cand <= now){ m++; if(m>11){m=0;y++;} cand = new Date(y, m, day, hour, 0, 0); }
+  const pad = n => String(n).padStart(2,"0");
+  return `${cand.getFullYear()}-${pad(cand.getMonth()+1)}-${pad(cand.getDate())} ${pad(cand.getHours())}:00`;
+}
+function renderSchedule(){
+  const el = document.getElementById("schedule");
+  if(!el) return;
+  const sp = DB.status || {};
+  const parts = [];
+  if(SCHED.crawl) parts.push(
+    `<div class="s-item"><span class="s-label">${esc(SCHED.crawl.label)}</span>`+
+    `<span class="s-val accent">${esc(SCHED.crawl.cron)}</span>`+
+    `<span class="s-sub">下次 ${nextMonthly(SCHED.crawl.day, SCHED.crawl.hour)}</span></div>`);
+  if(SCHED.check) parts.push(
+    `<div class="s-item"><span class="s-label">${esc(SCHED.check.label)}</span>`+
+    `<span class="s-val accent">${esc(SCHED.check.cron)}</span>`+
+    `<span class="s-sub">下次 ${nextMonthly(SCHED.check.day, SCHED.check.hour)}</span></div>`);
+  parts.push(`<div class="s-item"><span class="s-label">已接入客户</span><span class="s-val">${DB.clients.length?esc(DB.clients.join("、")):"—"}</span></div>`);
+  if(sp.last_run) parts.push(`<div class="s-item"><span class="s-label">上次运行</span><span class="s-val">${esc(sp.last_run)}</span></div>`);
+  el.innerHTML = parts.join("");
+}
+renderSchedule();
+
 let activeTab = "site";
 function setTab(t){
   activeTab = t;
@@ -260,7 +296,13 @@ def main(argv=None):
     clients = sorted({it.get("client", "") for it in items if it.get("client")})
     status = _load_status(HERE)
     sites = load_sites(args.data_dir)
-    payload = json.dumps({"clients": clients, "items": items, "status": status, "sites": sites}, ensure_ascii=False)
+    # 调度信息（与 deploy/*.timer 保持一致；如改动定时器需同步此处）
+    schedule = {
+        "crawl": {"label": "全量爬取", "cron": "每月 1 日 09:00", "day": 1, "hour": 9},
+        "check": {"label": "提交检查 / 新客爬取", "cron": "每月 1 日 19:00", "day": 1, "hour": 19},
+    }
+    payload = json.dumps({"clients": clients, "items": items, "status": status,
+                          "sites": sites, "schedule": schedule}, ensure_ascii=False)
     out = HTML_TEMPLATE.replace("/*__DATA__*/", payload)
 
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
